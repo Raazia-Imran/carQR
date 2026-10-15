@@ -1,0 +1,29 @@
+# Project memory
+
+Updated: 15 October 2026. This records decisions and provenance, not hidden reasoning.
+
+## User intent
+
+Build a Pakistan-focused private vehicle contact product. Complete Phase A messaging before Phase B calls. Prepare a strong pitch, full technical/business planning, roles, competitors, roadmap and coding kickoff. Target first-month MVP, broader development over one to two months. Upload planning and deck to Raazia-Imran/carQR. Owner identity must not be exposed to scanners. Account for owners without internet.
+
+## Repository baseline
+
+Connected GitHub inspection found an empty public repository with main as default branch. No pre-existing application, README or AGENTS instructions existed. Uploaded source was Pasted text.txt, containing prior AI-generated search/advice. It is input context, not authoritative research. Raw transcript is not published because it is unnecessary and includes unsupported claims.
+
+## Decisions proposed in this package
+
+Web/PWA first. Scanner has no account requirement for fixed alerts. Six roles, 12 modules, 30 route/view inventory. Official WhatsApp plus SMS fallback in A. Explicit acknowledgement cancels escalation. Separate local PSTN bridge in B. WhatsApp voice requires its own feasibility approval. No mandatory GPS gate, live tracking or medical profile in A. Managed carrier API preferred over self-hosted PBX where approved. One modular application plus worker.
+
+Working name QR CAR only; CarQR already exists in Pakistan. No name/domain clearance performed. Competitor public presence confirmed to differing degrees, no production quality or customer numbers verified. No supplier contacted or pilot recruited.
+
+## Open decisions
+
+Team size/hours; budget; distinct brand/domain; first pilot institution; auth provider; official WhatsApp sender/BSP; transactional SMS supplier; carrier route and approvals; final tariffs; print material; retention/legal review; institution pricing. These do not block planning, but some block real-world launch.
+
+## Next session
+
+Read TASKS.md, select K01–K05, confirm available hours and begin provider/auth feasibility while building fake-provider vertical slice. Record implementation evidence. Do not silently reinterpret this planning package as production readiness.
+
+## Change log
+
+2026-10-15: initial researched planning package and pre-development pitch. Corrected unsupported adoption/open-rate/pricing claims and delivery-versus-acknowledgement logic. Preserved A→B user intent with honest external gates.

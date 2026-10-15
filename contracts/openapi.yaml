@@ -1,0 +1,112 @@
+openapi: 3.1.0
+info:
+  title: QR CAR Phase A vertical-slice design
+  version: 0.1.0
+  description: Proposed contract only. No running API. Remaining routes are in docs/03-data-and-api.md.
+servers:
+  - url: https://example.invalid
+paths:
+  /api/public/tags/{token}:
+    parameters:
+      - name: token
+        in: path
+        required: true
+        schema: {type: string, minLength: 22}
+    get:
+      summary: Read privacy-safe tag view without sending notifications
+      responses:
+        '200':
+          description: Safe public projection
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [available, reasons]
+                properties:
+                  available: {type: boolean}
+                  descriptor: {type: string, maxLength: 80}
+                  reasons:
+                    type: array
+                    items: {$ref: '#/components/schemas/Reason'}
+        '429': {description: Rate limited}
+  /api/public/tags/{token}/incidents:
+    post:
+      summary: Intentionally create incident and transactional outbox
+      parameters:
+        - {name: token, in: path, required: true, schema: {type: string}}
+        - {name: Idempotency-Key, in: header, required: true, schema: {type: string, maxLength: 128}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [reason]
+              properties:
+                reason: {$ref: '#/components/schemas/Reason'}
+                locationText: {type: string, maxLength: 80}
+      responses:
+        '201':
+          description: Incident accepted; sets secure HttpOnly incident-scoped cookie
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [id, state, expiresAt]
+                properties:
+                  id: {type: string, format: uuid}
+                  state: {const: OPEN}
+                  expiresAt: {type: string, format: date-time}
+        '400': {description: Invalid reason/body}
+        '404': {description: Tag unavailable}
+        '409': {description: Conflicting idempotency key}
+        '429': {description: Request or cost limit reached}
+  /api/public/incidents/{id}:
+    get:
+      summary: Safe state for the incident-bound scanner session only
+      security: [{incidentCookie: []}]
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string, format: uuid}}
+      responses:
+        '200':
+          description: Safe incident state, never recipient details
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                properties:
+                  state: {type: string, enum: [OPEN, ACKNOWLEDGED, RESOLVED, CANCELLED, EXPIRED]}
+                  delivery: {type: string, enum: [PENDING, CONFIRMED, UNCONFIRMED]}
+        '404': {description: Not accessible}
+  /api/owner/incidents/{id}/ack:
+    post:
+      summary: Acknowledge as intended authenticated owner/contact; enforce CSRF
+      security: [{ownerCookie: []}]
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string, format: uuid}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [action]
+              properties:
+                action: {type: string, enum: [coming, unavailable, report_abuse]}
+      responses:
+        '200': {description: Response recorded and eligible escalation cancelled}
+        '404': {description: Not accessible}
+        '409': {description: Incident terminal or stale}
+components:
+  securitySchemes:
+    incidentCookie: {type: apiKey, in: cookie, name: incident_session}
+    ownerCookie: {type: apiKey, in: cookie, name: owner_session}
+  schemas:
+    Reason:
+      type: string
+      enum: [blocked_access, lights_on, window_open, visible_damage, urgent_concern]

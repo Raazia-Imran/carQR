@@ -4,6 +4,8 @@
 
 A driver should be reachable about a blocked gate without publishing a personal phone number. A QR tag opens a mobile web page. The platform sends a private alert and tracks explicit acknowledgement. SMS provides a fallback when the owner lacks mobile data. Local masked voice follows after carrier approval.
 
+Download/read the [complete planning handbook](QR_CAR_Master_Plan.md) for a consolidated version, or use the modular files below. Track the eight workstreams in [GitHub Issues](https://github.com/Raazia-Imran/carQR/issues).
+
 ## Start here
 
 1. [Executive decision and corrections](docs/00-decision-brief.md)
@@ -19,6 +21,8 @@ A driver should be reachable about a blocked gate without publishing a personal 
 11. [Tests and launch gates](docs/08-acceptance-and-launch.md)
 12. [Evidence register](docs/09-sources.md) and [provider questions](docs/10-provider-validation.md)
 13. [Pitch deck](pitch/QR_CAR_Pitch_Deck.pptx), [PDF](pitch/QR_CAR_Pitch_Deck.pdf), [presenter guide](pitch/PRESENTER_GUIDE.md)
+
+14. [Technical glossary](docs/11-glossary.md)
 
 ## Recommended commitment
 
