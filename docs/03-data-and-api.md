@@ -1,5 +1,7 @@
 # Data model and API specification
 
+> Implementation update, 18–19 October 2026: application code now exists. This document preserves the planning baseline; see [IMPLEMENTATION.md](IMPLEMENTATION.md) and [TESTING.md](TESTING.md).
+
 This is a design specification, not an implemented migration. UUIDs are internal IDs. Public QR tokens use at least 128 random bits from a cryptographic generator, encoded URL-safe. Hash tokens at rest for lookup. Never encode phone, plate or sequential database ID in QR. A separate sealed claim secret has at least 128 random bits and a one-time hashed verification record. Public token and claim secret must never be interchangeable.
 
 ## Entities and constraints

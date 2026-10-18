@@ -7,12 +7,17 @@ import { config } from "./config";
 import { reasons } from "../shared/contracts";
 export async function publicTag(raw: string) {
   const t = await one(
-    "SELECT t.state,v.make,v.color,u.dnd,u.disabled FROM tag t JOIN vehicle v ON v.id=t.vehicle_id JOIN app_user u ON u.id=v.owner_id WHERE t.token_hash=$1",
+    "SELECT t.state,v.make,v.color,u.dnd,u.disabled,u.locale FROM tag t JOIN vehicle v ON v.id=t.vehicle_id JOIN app_user u ON u.id=v.owner_id WHERE t.token_hash=$1",
     [hash(raw, "tag")],
   );
   if (!t || t.state !== "active" || t.dnd || t.disabled)
     return { available: false, reasons: [] };
-  return { available: true, descriptor: t.color + " " + t.make, reasons };
+  return {
+    available: true,
+    descriptor: t.color + " " + t.make,
+    locale: t.locale,
+    reasons,
+  };
 }
 export async function createBatch(a: Actor, quantity: number) {
   staff(a, ["admin", "fulfilment"]);

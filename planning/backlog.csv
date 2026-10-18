@@ -1,43 +1,43 @@
 id,task,role,estimated_developer_hours,dependencies,target,acceptance,status
 K01,Confirm team capacity and budget,Product,0,none,W1,Hours and cash assumptions accepted,TODO
 K02,Clear distinct name and domain,Product,0,K01,W1,Avoid competitor naming conflict before print,TODO
-K03,WhatsApp sender/template feasibility,Dev A,4,K01,W1,Document approval requirements and cost,TODO
-K04,SMS supplier technical validation,Dev A,3,K01,W1,Written route quote and receipt capability,TODO
-K05,Local voice use and CLI approval spike,Dev A,3,K01,W1,Written carrier feasibility; no implied approval,TODO
+K03,WhatsApp sender/template feasibility,Dev A,4,K01,W1,Document approval requirements and cost,BLOCKED
+K04,SMS supplier technical validation,Dev A,3,K01,W1,Written route quote and receipt capability,BLOCKED
+K05,Local voice use and CLI approval spike,Dev A,3,K01,W1,Written carrier feasibility; no implied approval,BLOCKED
 K06,Discovery and competitor demonstrations,Product,0,K01,W1-W2,Interview notes and controlled product evidence,TODO
-K07,Workspace dependencies CI environments,Dev B,5,K01,W1,Reproducible local build and isolated config,TODO
-K08,Auth OTP consent spike,Dev A,7,K07,W1,Limits verified; contact ownership and consent saved,TODO
-K09,Data schema and migrations,Dev A,5,K08,W1,Constraints and owner scopes reviewed,TODO
-K10,Secure claim and lifecycle,Dev A,7,K09,W1-W2,Atomic claim and revoke tests,TODO
-K11,Scanner public DTO and reason UI,Dev B,7,K07,W1-W2,No phone leakage at 360px,TODO
-K12,Incident API and sessions,Dev B,6,K09 K11,W2,Idempotent safe creation/status,TODO
-K13,Transactional outbox,Dev A,5,K09 K12,W2,Restart recovery demonstrated,TODO
-K14,Worker dispatch and fake provider,Dev A,5,K13,W2,Retries bounded and unknown outcome modeled,TODO
-K15,Owner acknowledgement flow,Dev B,5,K12,W2,Only intended contact can acknowledge,TODO
-K16,WhatsApp adapter and signed webhook,Dev A,7,K03 K14,W2-W3,Team-owned live test or explicitly blocked,TODO
-K17,SMS adapter and receipts,Dev A,5,K04 K14,W2-W3,Contracted route real-device test,TODO
-K18,Escalation and cancellation race,Dev A,6,K15 K16 K17,W3,"90s fallback, no repeated logical stage",TODO
-K19,Owner vehicle and preference dashboard,Dev B,6,K10 K15,W2-W3,"Own records only, pause works",TODO
-K20,Minimal admin inventory and health,Dev B,7,K10 K14,W3,Role checks and audits,TODO
-K21,Backup invite opt-in,Dev B,4,K08 K18,W3,No unconsented send,TODO
-K22,Rate limits challenges cost cap,Dev A,6,K12 K14,W3,Flood/OTP test and stop switch,TODO
-K23,Consent withdrawal and retention,Dev A,4,K09 K18,W3,"Jobs recheck consent, deletion verified",TODO
-K24,Localization and accessibility,Dev B,5,K11 K19,W3,English Roman Urdu and reviewed RTL,TODO
-K25,Optional incident location,Dev B,2,K12,W3,Denied permission does not block,TODO
-K26,Transfer replacement recovery,Dev B,4,K10 K19,W3-W4,Old access invalidated,TODO
-K27,Minimal site scope and staff flow,Dev B,5,K20,W4,Tenant isolation tests,TODO
+K07,Workspace dependencies CI environments,Dev B,5,K01,W1,Reproducible local build and isolated config,REVIEW
+K08,Auth OTP consent spike,Dev A,7,K07,W1,Limits verified; contact ownership and consent saved,REVIEW
+K09,Data schema and migrations,Dev A,5,K08,W1,Constraints and owner scopes reviewed,REVIEW
+K10,Secure claim and lifecycle,Dev A,7,K09,W1-W2,Atomic claim and revoke tests,REVIEW
+K11,Scanner public DTO and reason UI,Dev B,7,K07,W1-W2,No phone leakage at 360px,REVIEW
+K12,Incident API and sessions,Dev B,6,K09 K11,W2,Idempotent safe creation/status,REVIEW
+K13,Transactional outbox,Dev A,5,K09 K12,W2,Restart recovery demonstrated,REVIEW
+K14,Worker dispatch and fake provider,Dev A,5,K13,W2,Retries bounded and unknown outcome modeled,REVIEW
+K15,Owner acknowledgement flow,Dev B,5,K12,W2,Only intended contact can acknowledge,REVIEW
+K16,WhatsApp adapter and signed webhook,Dev A,7,K03 K14,W2-W3,Team-owned live test or explicitly blocked,BLOCKED
+K17,SMS adapter and receipts,Dev A,5,K04 K14,W2-W3,Contracted route real-device test,BLOCKED
+K18,Escalation and cancellation race,Dev A,6,K15 K16 K17,W3,"90s fallback, no repeated logical stage",REVIEW
+K19,Owner vehicle and preference dashboard,Dev B,6,K10 K15,W2-W3,"Own records only, pause works",REVIEW
+K20,Minimal admin inventory and health,Dev B,7,K10 K14,W3,Role checks and audits,REVIEW
+K21,Backup invite opt-in,Dev B,4,K08 K18,W3,No unconsented send,REVIEW
+K22,Rate limits challenges cost cap,Dev A,6,K12 K14,W3,Flood/OTP test and stop switch,REVIEW
+K23,Consent withdrawal and retention,Dev A,4,K09 K18,W3,"Jobs recheck consent, deletion verified",REVIEW
+K24,Localization and accessibility,Dev B,5,K11 K19,W3,English Roman Urdu and reviewed RTL,REVIEW
+K25,Optional incident location,Dev B,2,K12,W3,Denied permission does not block,REVIEW
+K26,Transfer replacement recovery,Dev B,4,K10 K19,W3-W4,Old access invalidated,REVIEW
+K27,Minimal site scope and staff flow,Dev B,5,K20,W4,Tenant isolation tests,REVIEW
 K28,Print samples and activation QA,Product,0,K02 K10,W3-W4,Real-glass scan evidence,TODO
-K29,All-network Phase A device tests,Dev A,5,K18 K21,W4,Data-off SMS and honest status,TODO
-K30,Privacy authorization security review,Both,7,K22 K23 K27,W4,Critical tests pass without PII leak,TODO
-K31,Backups monitoring restore rollback,Dev A,5,K14 K20,W4,Measured restore and failure runbook,TODO
+K29,All-network Phase A device tests,Dev A,5,K18 K21,W4,Data-off SMS and honest status,BLOCKED
+K30,Privacy authorization security review,Both,7,K22 K23 K27,W4,Critical tests pass without PII leak,REVIEW
+K31,Backups monitoring restore rollback,Dev A,5,K14 K20,W4,Measured restore and failure runbook,REVIEW
 K32,Support order reconciliation docs,Product,0,K20 K26,W4,Named support owner and settlement policy,TODO
-K33,Controlled Phase A pilot,Product,0,K28 K29 K30 K31 K32,W4,"Consenting cohort, all launch gates passed",TODO
+K33,Controlled Phase A pilot,Product,0,K28 K29 K30 K31 K32,W4,"Consenting cohort, all launch gates passed",BLOCKED
 K34,Pilot fixes and outcome report,Both,10,K33,W5,"Measured outcomes and costs, no fabricated traction",TODO
-K35,Approved voice adapter/bridge,Dev A,14,K05 K34,W6,Use/CLI permission and working test legs,TODO
+K35,Approved voice adapter/bridge,Dev A,14,K05 K34,W6,Use/CLI permission and working test legs,BLOCKED
 K36,Verified scanner callback UI,Dev B,7,K08 K35,W6,No arbitrary number dialing,TODO
 K37,Voice acceptance caps teardown,Dev A,8,K35 K36,W6-W7,120s cap and safe hangup,TODO
 K38,Voice privacy abuse and billing tests,Both,10,K37,W7,"Networks, voicemail and two-leg cost verified",TODO
 K39,WhatsApp voice feasibility only,Dev A,4,K03 K05,W5-W7,Written permitted topology or defer,TODO
 K40,Site reporting and renewal flow,Dev B,8,K27 K34,W5-W7,Scoped aggregates and agreed payment process,TODO
-K41,Conditional Phase B pilot,Product,0,K38,W8,Approval and tests passed before enabling,TODO
+K41,Conditional Phase B pilot,Product,0,K38,W8,Approval and tests passed before enabling,BLOCKED
 K42,Paid validation and next pitch,Product,0,K34 K40,W8,Renewal evidence and revised economics,TODO

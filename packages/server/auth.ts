@@ -14,6 +14,10 @@ export type Actor = {
 };
 const supabase = () =>
   createClient(required("SUPABASE_URL"), required("SUPABASE_ANON_KEY"), {
+    global: {
+      fetch: (input, init) =>
+        fetch(input, { ...init, signal: AbortSignal.timeout(10000) }),
+    },
     auth: {
       persistSession: false,
       autoRefreshToken: false,

@@ -1,5 +1,7 @@
 # Architecture
 
+> Implementation update, 18–19 October 2026: application code now exists. This document preserves the planning baseline; see [docs/IMPLEMENTATION.md](docs/IMPLEMENTATION.md) and [docs/TESTING.md](docs/TESTING.md).
+
 ## Stack decision
 
 | Layer | Proposed choice | Rationale |

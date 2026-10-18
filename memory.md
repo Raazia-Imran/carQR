@@ -31,3 +31,7 @@ Read TASKS.md, select K01–K05, confirm available hours and begin provider/auth
 ## 2026-10-18 implementation decisions
 
 User authorized coding the project in this repository with proper documentation. Development is on `feat/phase-a-application`, preserving the planning baseline. Phase A is the implementation target; no carrier approvals or production readiness are implied. See docs/IMPLEMENTATION.md for SQL/outbox/auth decisions and verification evidence. Exact dependencies and operations files are tracked with the code. External sender, route, identity configuration, name clearance and pilot gates remain real dependencies.
+
+### Continued verification, 18–19 October 2026
+
+Published Phase A code in draft PR #9, branch `feat/phase-a-application`, initial remote commit `9238240ca6ffa80c0761bfe0dd12a3da7a2cfedd`. Native PostgreSQL GitHub Actions passed the 28-test initial suite, typecheck, production build and runtime dependency audit. Local native database startup was blocked by host permissions; local testing used PGlite instead. Browser QA and live provider verification were not performed. Further review fixed immutable incident descriptions after tag transfer, corrected CLI scripts, split UI components, and added provider/race/CAPTCHA regressions. See the current README, IMPLEMENTATION, QUICKSTART, PROVIDERS, API, OPERATIONS and TESTING guides. Commercial/field work and Phase B are still open; no forced completion percentages.

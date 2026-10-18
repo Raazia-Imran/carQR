@@ -1,112 +1,2622 @@
-openapi: 3.1.0
-info:
-  title: QR CAR Phase A vertical-slice design
-  version: 0.1.0
-  description: Proposed contract only. No running API. Remaining routes are in docs/03-data-and-api.md.
-servers:
-  - url: https://example.invalid
-paths:
-  /api/public/tags/{token}:
-    parameters:
-      - name: token
-        in: path
-        required: true
-        schema: {type: string, minLength: 22}
-    get:
-      summary: Read privacy-safe tag view without sending notifications
-      responses:
-        '200':
-          description: Safe public projection
-          content:
-            application/json:
-              schema:
-                type: object
-                additionalProperties: false
-                required: [available, reasons]
-                properties:
-                  available: {type: boolean}
-                  descriptor: {type: string, maxLength: 80}
-                  reasons:
-                    type: array
-                    items: {$ref: '#/components/schemas/Reason'}
-        '429': {description: Rate limited}
-  /api/public/tags/{token}/incidents:
-    post:
-      summary: Intentionally create incident and transactional outbox
-      parameters:
-        - {name: token, in: path, required: true, schema: {type: string}}
-        - {name: Idempotency-Key, in: header, required: true, schema: {type: string, maxLength: 128}}
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              additionalProperties: false
-              required: [reason]
-              properties:
-                reason: {$ref: '#/components/schemas/Reason'}
-                locationText: {type: string, maxLength: 80}
-      responses:
-        '201':
-          description: Incident accepted; sets secure HttpOnly incident-scoped cookie
-          content:
-            application/json:
-              schema:
-                type: object
-                additionalProperties: false
-                required: [id, state, expiresAt]
-                properties:
-                  id: {type: string, format: uuid}
-                  state: {const: OPEN}
-                  expiresAt: {type: string, format: date-time}
-        '400': {description: Invalid reason/body}
-        '404': {description: Tag unavailable}
-        '409': {description: Conflicting idempotency key}
-        '429': {description: Request or cost limit reached}
-  /api/public/incidents/{id}:
-    get:
-      summary: Safe state for the incident-bound scanner session only
-      security: [{incidentCookie: []}]
-      parameters:
-        - {name: id, in: path, required: true, schema: {type: string, format: uuid}}
-      responses:
-        '200':
-          description: Safe incident state, never recipient details
-          content:
-            application/json:
-              schema:
-                type: object
-                additionalProperties: false
-                properties:
-                  state: {type: string, enum: [OPEN, ACKNOWLEDGED, RESOLVED, CANCELLED, EXPIRED]}
-                  delivery: {type: string, enum: [PENDING, CONFIRMED, UNCONFIRMED]}
-        '404': {description: Not accessible}
-  /api/owner/incidents/{id}/ack:
-    post:
-      summary: Acknowledge as intended authenticated owner/contact; enforce CSRF
-      security: [{ownerCookie: []}]
-      parameters:
-        - {name: id, in: path, required: true, schema: {type: string, format: uuid}}
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              additionalProperties: false
-              required: [action]
-              properties:
-                action: {type: string, enum: [coming, unavailable, report_abuse]}
-      responses:
-        '200': {description: Response recorded and eligible escalation cancelled}
-        '404': {description: Not accessible}
-        '409': {description: Incident terminal or stale}
-components:
-  securitySchemes:
-    incidentCookie: {type: apiKey, in: cookie, name: incident_session}
-    ownerCookie: {type: apiKey, in: cookie, name: owner_session}
-  schemas:
-    Reason:
-      type: string
-      enum: [blocked_access, lights_on, window_open, visible_damage, urgent_concern]
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "QR CAR Phase A application",
+    "version": "0.1.0",
+    "description": "Implemented alpha endpoints. Staff routes require a provisioned role and recent MFA. Live providers remain configuration/approval-gated. See docs/API.md and docs/PROVIDERS.md."
+  },
+  "servers": [
+    {
+      "url": "/api"
+    }
+  ],
+  "paths": {
+    "/config": {
+      "get": {
+        "summary": "Read safe mode flags",
+        "operationId": "get_config",
+        "tags": [
+          "public"
+        ],
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Action succeeded; see docs/API.md for exact projection"
+          },
+          "default": {
+            "description": "Safe application error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/health": {
+      "get": {
+        "summary": "Check database availability",
+        "operationId": "get_health",
+        "tags": [
+          "public"
+        ],
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Action succeeded; see docs/API.md for exact projection"
+          },
+          "default": {
+            "description": "Safe application error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/session": {
+      "post": {
+        "summary": "Create scanner cookie; no notification",
+        "operationId": "post_session",
+        "tags": [
+          "public"
+        ],
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Action succeeded; see docs/API.md for exact projection"
+          },
+          "default": {
+            "description": "Safe application error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "Origin",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Must exactly equal configured APP_ORIGIN"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {},
+                "required": []
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/start": {
+      "post": {
+        "summary": "Request sign-in code",
+        "operationId": "post_auth_start",
+        "tags": [
+          "public"
+        ],
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Action succeeded; see docs/API.md for exact projection"
+          },
+          "default": {
+            "description": "Safe application error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "Origin",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Must exactly equal configured APP_ORIGIN"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "phone": {
+                    "type": "string",
+                    "pattern": "^\\+92[0-9]{10}$"
+                  },
+                  "captchaToken": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "phone"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/verify": {
+      "post": {
+        "summary": "Verify code and set owner cookie",
+        "operationId": "post_auth_verify",
+        "tags": [
+          "public"
+        ],
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Action succeeded; see docs/API.md for exact projection"
+          },
+          "default": {
+            "description": "Safe application error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "Origin",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Must exactly equal configured APP_ORIGIN"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "phone": {
+                    "type": "string"
+                  },
+                  "code": {
+                    "type": "string",
+                    "pattern": "^\\d{6}$"
+                  },
+                  "challengeId": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "phone",
+                  "code",
+                  "challengeId"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/logout": {
+      "post": {
+        "summary": "Revoke application session",
+        "operationId": "post_auth_logout",
+        "tags": [
+          "owner"
+        ],
+        "security": [
+          {
+            "ownerCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Action succeeded; see docs/API.md for exact projection"
+          },
+          "default": {
+            "description": "Safe application error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "Origin",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Must exactly equal configured APP_ORIGIN"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {},
+                "required": []
+              }
+            }
+          }
+        }
+      }
+    },
+    "/public/tags/{token}": {
+      "get": {
+        "summary": "Read minimal tag projection without notification",
+        "operationId": "get_public_tags_token",
+        "tags": [
+          "public"
+        ],
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Action succeeded; see docs/API.md for exact projection"
+          },
+          "default": {
+            "description": "Safe application error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "token",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      }
+    },
+    "/public/tags/{token}/incidents": {
+      "post": {
+        "summary": "Persist incident and delivery stages atomically",
+        "operationId": "post_public_tags_token_incidents",
+        "tags": [
+          "scanner"
+        ],
+        "security": [
+          {
+            "scannerCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Action succeeded; see docs/API.md for exact projection"
+          },
+          "default": {
+            "description": "Safe application error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "Incident accepted or matching idempotent retry; never a delivery guarantee"
+          }
+        },
+        "parameters": [
+          {
+            "name": "token",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Origin",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Must exactly equal configured APP_ORIGIN"
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 8,
+              "maxLength": 128
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "reason": {
+                    "type": "string",
+                    "enum": [
+                      "blocked_access",
+                      "lights_on",
+                      "window_open",
+                      "visible_damage",
+                      "urgent_concern"
+                    ]
+                  },
+                  "location": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                      "latitude": {
+                        "type": "number",
+                        "minimum": -90,
+                        "maximum": 90
+                      },
+                      "longitude": {
+                        "type": "number",
+                        "minimum": -180,
+                        "maximum": 180
+                      },
+                      "accuracy": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 100000
+                      }
+                    },
+                    "required": [
+                      "latitude",
+                      "longitude",
+                      "accuracy"
+                    ]
+                  },
+                  "challengeToken": {
+                    "type": "string",
+                    "maxLength": 2048
+                  }
+                },
+                "required": [
+                  "reason"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/public/incidents/{id}": {
+      "get": {
+        "summary": "Read own incident projection",
+        "operationId": "get_public_incidents_id",
+        "tags": [
+          "scanner"
+        ],
+        "security": [
+          {
+            "scannerCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Action succeeded; see docs/API.md for exact projection"
+          },
+          "default": {
+            "description": "Safe application error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ]
+      }
+    },
+    "/public/incidents/{id}/cancel": {
+      "post": {
+        "summary": "Cancel own active incident",
+        "operationId": "post_public_incidents_id_cancel",
+        "tags": [
+          "scanner"
+        ],
+        "security": [
+          {
+            "scannerCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Action succeeded; see docs/API.md for exact projection"
+          },
+          "default": {
+            "description": "Safe application error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "Origin",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Must exactly equal configured APP_ORIGIN"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {},
+                "required": []
+              }
+            }
+          }
+        }
+      }
+    },
+    "/public/incidents/{id}/resolve": {
+      "post": {
+        "summary": "Record scanner-reported resolution",
+        "operationId": "post_public_incidents_id_resolve",
+        "tags": [
+          "scanner"
+        ],
+        "security": [
+          {
+            "scannerCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Action succeeded; see docs/API.md for exact projection"
+          },
+          "default": {
+            "description": "Safe application error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "Origin",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Must exactly equal configured APP_ORIGIN"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {},
+                "required": []
+              }
+            }
+          }
+        }
+      }
+    },
+    "/public/incidents/{id}/report": {
+      "post": {
+        "summary": "Report a concern",
+        "operationId": "post_public_incidents_id_report",
+        "tags": [
+          "scanner"
+        ],
+        "security": [
+          {
+            "scannerCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Action succeeded; see docs/API.md for exact projection"
+          },
+          "default": {
+            "description": "Safe application error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "Origin",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Must exactly equal configured APP_ORIGIN"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {},
+                "required": []
+              }
+            }
+          }
+        }
+      }
+    },
+    "/owner/dashboard": {
+      "get": {
+        "summary": "Read own dashboard and memberships",
+        "operationId": "get_owner_dashboard",
+        "tags": [
+          "owner"
+        ],
+        "security": [
+          {
+            "ownerCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Action succeeded; see docs/API.md for exact projection"
+          },
+          "default": {
+            "description": "Safe application error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/owner/vehicles": {
+      "post": {
+        "summary": "Create vehicle",
+        "operationId": "post_owner_vehicles",
+        "tags": [
+          "owner"
+        ],
+        "security": [
+          {
+            "ownerCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Action succeeded; see docs/API.md for exact projection"
+          },
+          "default": {
+            "description": "Safe application error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "Created"
+          }
+        },
+        "parameters": [
+          {
+            "name": "Origin",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Must exactly equal configured APP_ORIGIN"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "make": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 40
+                  },
+                  "color": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 25
+                  }
+                },
+                "required": [
+                  "make",
+                  "color"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/owner/tags/claim": {
+      "post": {
+        "summary": "Atomically claim sealed sticker",
+        "operationId": "post_owner_tags_claim",
+        "tags": [
+          "owner"
+        ],
+        "security": [
+          {
+            "ownerCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Action succeeded; see docs/API.md for exact projection"
+          },
+          "default": {
+            "description": "Safe application error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "Origin",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Must exactly equal configured APP_ORIGIN"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "token": {
+                    "type": "string",
+                    "minLength": 22,
+                    "maxLength": 100
+                  },
+                  "claimSecret": {
+                    "type": "string",
+                    "minLength": 22,
+                    "maxLength": 100
+                  },
+                  "vehicleId": {
+                    "type": "string",
+                    "format": "uuid"
+                  }
+                },
+                "required": [
+                  "token",
+                  "claimSecret",
+                  "vehicleId"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/owner/tags/{id}/sticker": {
+      "get": {
+        "summary": "Download own tag public QR SVG",
+        "operationId": "get_owner_tags_id_sticker",
+        "tags": [
+          "owner"
+        ],
+        "security": [
+          {
+            "ownerCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Action succeeded; see docs/API.md for exact projection"
+          },
+          "default": {
+            "description": "Safe application error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ]
+      }
+    },
+    "/owner/incidents/{id}": {
+      "post": {
+        "summary": "Record explicit owner response",
+        "operationId": "post_owner_incidents_id",
+        "tags": [
+          "owner"
+        ],
+        "security": [
+          {
+            "ownerCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Action succeeded; see docs/API.md for exact projection"
+          },
+          "default": {
+            "description": "Safe application error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "Origin",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Must exactly equal configured APP_ORIGIN"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "action": {
+                    "type": "string",
+                    "enum": [
+                      "coming",
+                      "unavailable",
+                      "report_abuse",
+                      "resolve"
+                    ]
+                  }
+                },
+                "required": [
+                  "action"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/owner/preferences": {
+      "post": {
+        "summary": "Update channel consent, DND and language",
+        "operationId": "post_owner_preferences",
+        "tags": [
+          "owner"
+        ],
+        "security": [
+          {
+            "ownerCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Action succeeded; see docs/API.md for exact projection"
+          },
+          "default": {
+            "description": "Safe application error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "Origin",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Must exactly equal configured APP_ORIGIN"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "whatsapp": {
+                    "type": "boolean"
+                  },
+                  "sms": {
+                    "type": "boolean"
+                  },
+                  "dnd": {
+                    "type": "boolean"
+                  },
+                  "locale": {
+                    "type": "string",
+                    "enum": [
+                      "en",
+                      "roman",
+                      "ur"
+                    ]
+                  }
+                },
+                "required": [
+                  "whatsapp",
+                  "sms",
+                  "dnd",
+                  "locale"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/owner/backup/invite": {
+      "post": {
+        "summary": "Create one private backup invitation",
+        "operationId": "post_owner_backup_invite",
+        "tags": [
+          "owner"
+        ],
+        "security": [
+          {
+            "ownerCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Action succeeded; see docs/API.md for exact projection"
+          },
+          "default": {
+            "description": "Safe application error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "Origin",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Must exactly equal configured APP_ORIGIN"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "vehicleId": {
+                    "type": "string",
+                    "format": "uuid"
+                  }
+                },
+                "required": [
+                  "vehicleId"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/owner/backup/accept": {
+      "post": {
+        "summary": "Accept invitation with independent SMS consent",
+        "operationId": "post_owner_backup_accept",
+        "tags": [
+          "owner"
+        ],
+        "security": [
+          {
+            "ownerCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Action succeeded; see docs/API.md for exact projection"
+          },
+          "default": {
+            "description": "Safe application error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "Origin",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Must exactly equal configured APP_ORIGIN"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "secret": {
+                    "type": "string",
+                    "minLength": 22,
+                    "maxLength": 100
+                  }
+                },
+                "required": [
+                  "secret"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/owner/backup/remove": {
+      "post": {
+        "summary": "Withdraw owner or backup agreement",
+        "operationId": "post_owner_backup_remove",
+        "tags": [
+          "owner"
+        ],
+        "security": [
+          {
+            "ownerCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Action succeeded; see docs/API.md for exact projection"
+          },
+          "default": {
+            "description": "Safe application error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "Origin",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Must exactly equal configured APP_ORIGIN"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "vehicleId": {
+                    "type": "string",
+                    "format": "uuid"
+                  }
+                },
+                "required": [
+                  "vehicleId"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/owner/backups": {
+      "get": {
+        "summary": "List current backup commitments",
+        "operationId": "get_owner_backups",
+        "tags": [
+          "owner"
+        ],
+        "security": [
+          {
+            "ownerCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Action succeeded; see docs/API.md for exact projection"
+          },
+          "default": {
+            "description": "Safe application error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/owner/export": {
+      "get": {
+        "summary": "Export own minimal records",
+        "operationId": "get_owner_export",
+        "tags": [
+          "owner"
+        ],
+        "security": [
+          {
+            "ownerCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Action succeeded; see docs/API.md for exact projection"
+          },
+          "default": {
+            "description": "Safe application error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/owner/delete": {
+      "post": {
+        "summary": "Deactivate and erase stored contact value",
+        "operationId": "post_owner_delete",
+        "tags": [
+          "owner"
+        ],
+        "security": [
+          {
+            "ownerCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Action succeeded; see docs/API.md for exact projection"
+          },
+          "default": {
+            "description": "Safe application error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "Origin",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Must exactly equal configured APP_ORIGIN"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "confirm": {
+                    "type": "string",
+                    "const": "DELETE"
+                  }
+                },
+                "required": [
+                  "confirm"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/owner/orders": {
+      "post": {
+        "summary": "Record manual sticker request",
+        "operationId": "post_owner_orders",
+        "tags": [
+          "owner"
+        ],
+        "security": [
+          {
+            "ownerCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Action succeeded; see docs/API.md for exact projection"
+          },
+          "default": {
+            "description": "Safe application error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "Created"
+          }
+        },
+        "parameters": [
+          {
+            "name": "Origin",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Must exactly equal configured APP_ORIGIN"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "quantity": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 20
+                  }
+                },
+                "required": [
+                  "quantity"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/mfa/enroll": {
+      "post": {
+        "summary": "Enroll staff TOTP factor",
+        "operationId": "post_mfa_enroll",
+        "tags": [
+          "owner"
+        ],
+        "security": [
+          {
+            "ownerCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Action succeeded; see docs/API.md for exact projection"
+          },
+          "default": {
+            "description": "Safe application error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "Origin",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Must exactly equal configured APP_ORIGIN"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {},
+                "required": []
+              }
+            }
+          }
+        }
+      }
+    },
+    "/mfa/factors": {
+      "post": {
+        "summary": "List staff factors",
+        "operationId": "post_mfa_factors",
+        "tags": [
+          "owner"
+        ],
+        "security": [
+          {
+            "ownerCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Action succeeded; see docs/API.md for exact projection"
+          },
+          "default": {
+            "description": "Safe application error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "Origin",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Must exactly equal configured APP_ORIGIN"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {},
+                "required": []
+              }
+            }
+          }
+        }
+      }
+    },
+    "/mfa/verify": {
+      "post": {
+        "summary": "Verify staff TOTP and rotate application cookie",
+        "operationId": "post_mfa_verify",
+        "tags": [
+          "owner"
+        ],
+        "security": [
+          {
+            "ownerCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Action succeeded; see docs/API.md for exact projection"
+          },
+          "default": {
+            "description": "Safe application error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "Origin",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Must exactly equal configured APP_ORIGIN"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "factorId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "code": {
+                    "type": "string",
+                    "pattern": "^\\d{6}$"
+                  }
+                },
+                "required": [
+                  "factorId",
+                  "code"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/mfa/simulate": {
+      "post": {
+        "summary": "Simulate MFA for local/test staff only",
+        "operationId": "post_mfa_simulate",
+        "tags": [
+          "owner"
+        ],
+        "security": [
+          {
+            "ownerCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Action succeeded; see docs/API.md for exact projection"
+          },
+          "default": {
+            "description": "Safe application error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "Origin",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Must exactly equal configured APP_ORIGIN"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {},
+                "required": []
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/overview": {
+      "get": {
+        "summary": "Read audited operations overview",
+        "operationId": "get_admin_overview",
+        "tags": [
+          "staff"
+        ],
+        "security": [
+          {
+            "ownerCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Action succeeded; see docs/API.md for exact projection"
+          },
+          "default": {
+            "description": "Safe application error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/batches": {
+      "post": {
+        "summary": "Create private sealed tag manifest; admin/fulfilment",
+        "operationId": "post_admin_batches",
+        "tags": [
+          "staff"
+        ],
+        "security": [
+          {
+            "ownerCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Action succeeded; see docs/API.md for exact projection"
+          },
+          "default": {
+            "description": "Safe application error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "Created"
+          }
+        },
+        "parameters": [
+          {
+            "name": "Origin",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Must exactly equal configured APP_ORIGIN"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "quantity": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 100
+                  }
+                },
+                "required": [
+                  "quantity"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/reconcile": {
+      "post": {
+        "summary": "Record evidence-backed UNKNOWN outcome; admin/support",
+        "operationId": "post_admin_reconcile",
+        "tags": [
+          "staff"
+        ],
+        "security": [
+          {
+            "ownerCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Action succeeded; see docs/API.md for exact projection"
+          },
+          "default": {
+            "description": "Safe application error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "Origin",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Must exactly equal configured APP_ORIGIN"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "deliveryId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "result": {
+                    "type": "string",
+                    "enum": [
+                      "failed",
+                      "accepted"
+                    ]
+                  },
+                  "providerId": {
+                    "type": "string",
+                    "maxLength": 200
+                  }
+                },
+                "required": [
+                  "deliveryId",
+                  "result"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/reports/{id}": {
+      "post": {
+        "summary": "Mark abuse report reviewed",
+        "operationId": "post_admin_reports_id",
+        "tags": [
+          "staff"
+        ],
+        "security": [
+          {
+            "ownerCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Action succeeded; see docs/API.md for exact projection"
+          },
+          "default": {
+            "description": "Safe application error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "Origin",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Must exactly equal configured APP_ORIGIN"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {},
+                "required": []
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/orders/{id}": {
+      "post": {
+        "summary": "Update manual fulfilment state; admin/fulfilment",
+        "operationId": "post_admin_orders_id",
+        "tags": [
+          "staff"
+        ],
+        "security": [
+          {
+            "ownerCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Action succeeded; see docs/API.md for exact projection"
+          },
+          "default": {
+            "description": "Safe application error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "Origin",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Must exactly equal configured APP_ORIGIN"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "state": {
+                    "type": "string",
+                    "enum": [
+                      "contacted",
+                      "fulfilled",
+                      "cancelled"
+                    ]
+                  }
+                },
+                "required": [
+                  "state"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/tenants": {
+      "post": {
+        "summary": "Create site; platform admin",
+        "operationId": "post_admin_tenants",
+        "tags": [
+          "staff"
+        ],
+        "security": [
+          {
+            "ownerCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Action succeeded; see docs/API.md for exact projection"
+          },
+          "default": {
+            "description": "Safe application error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "Created"
+          }
+        },
+        "parameters": [
+          {
+            "name": "Origin",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Must exactly equal configured APP_ORIGIN"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 80
+                  }
+                },
+                "required": [
+                  "name"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/memberships": {
+      "post": {
+        "summary": "Assign site membership; platform admin",
+        "operationId": "post_admin_memberships",
+        "tags": [
+          "staff"
+        ],
+        "security": [
+          {
+            "ownerCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Action succeeded; see docs/API.md for exact projection"
+          },
+          "default": {
+            "description": "Safe application error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "Origin",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Must exactly equal configured APP_ORIGIN"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "tenantId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "userId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "role": {
+                    "type": "string",
+                    "enum": [
+                      "staff",
+                      "manager"
+                    ]
+                  }
+                },
+                "required": [
+                  "tenantId",
+                  "userId",
+                  "role"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/allocate": {
+      "post": {
+        "summary": "Allocate unclaimed tag to site; admin/fulfilment",
+        "operationId": "post_admin_allocate",
+        "tags": [
+          "staff"
+        ],
+        "security": [
+          {
+            "ownerCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Action succeeded; see docs/API.md for exact projection"
+          },
+          "default": {
+            "description": "Safe application error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "Origin",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Must exactly equal configured APP_ORIGIN"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "tenantId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "tagId": {
+                    "type": "string",
+                    "format": "uuid"
+                  }
+                },
+                "required": [
+                  "tenantId",
+                  "tagId"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/site/{tenantId}": {
+      "get": {
+        "summary": "Read membership-scoped incident summaries",
+        "operationId": "get_site_tenantId",
+        "tags": [
+          "owner"
+        ],
+        "security": [
+          {
+            "ownerCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Action succeeded; see docs/API.md for exact projection"
+          },
+          "default": {
+            "description": "Safe application error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "tenantId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ]
+      }
+    },
+    "/webhooks/whatsapp": {
+      "get": {
+        "summary": "Meta verification handshake",
+        "operationId": "get_webhooks_whatsapp",
+        "tags": [
+          "public"
+        ],
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Action succeeded; see docs/API.md for exact projection"
+          },
+          "default": {
+            "description": "Safe application error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "hub.mode",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "hub.verify_token",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "hub.challenge",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      },
+      "post": {
+        "summary": "Verify signature and process Meta receipts",
+        "operationId": "post_webhooks_whatsapp",
+        "tags": [
+          "provider"
+        ],
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Action succeeded; see docs/API.md for exact projection"
+          },
+          "default": {
+            "description": "Safe application error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "X-Hub-Signature-256",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/webhooks/sms": {
+      "post": {
+        "summary": "Verify signed gateway receipt",
+        "operationId": "post_webhooks_sms",
+        "tags": [
+          "provider"
+        ],
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Action succeeded; see docs/API.md for exact projection"
+          },
+          "default": {
+            "description": "Safe application error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "X-Timestamp",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "X-Signature",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "eventId": {
+                    "type": "string"
+                  },
+                  "state": {
+                    "type": "string",
+                    "enum": [
+                      "ACCEPTED",
+                      "DELIVERED",
+                      "FAILED"
+                    ]
+                  },
+                  "reference": {
+                    "type": "string",
+                    "format": "uuid"
+                  }
+                },
+                "required": [
+                  "id",
+                  "eventId",
+                  "state"
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/owner/tags/{id}/pause": {
+      "post": {
+        "summary": "Apply owned tag action: pause",
+        "operationId": "post_owner_tags_id_pause",
+        "tags": [
+          "owner"
+        ],
+        "security": [
+          {
+            "ownerCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Action succeeded; see docs/API.md for exact projection"
+          },
+          "default": {
+            "description": "Safe application error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "Origin",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Must exactly equal configured APP_ORIGIN"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {},
+                "required": []
+              }
+            }
+          }
+        }
+      }
+    },
+    "/owner/tags/{id}/resume": {
+      "post": {
+        "summary": "Apply owned tag action: resume",
+        "operationId": "post_owner_tags_id_resume",
+        "tags": [
+          "owner"
+        ],
+        "security": [
+          {
+            "ownerCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Action succeeded; see docs/API.md for exact projection"
+          },
+          "default": {
+            "description": "Safe application error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "Origin",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Must exactly equal configured APP_ORIGIN"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {},
+                "required": []
+              }
+            }
+          }
+        }
+      }
+    },
+    "/owner/tags/{id}/revoke": {
+      "post": {
+        "summary": "Apply owned tag action: revoke",
+        "operationId": "post_owner_tags_id_revoke",
+        "tags": [
+          "owner"
+        ],
+        "security": [
+          {
+            "ownerCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Action succeeded; see docs/API.md for exact projection"
+          },
+          "default": {
+            "description": "Safe application error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "Origin",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Must exactly equal configured APP_ORIGIN"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {},
+                "required": []
+              }
+            }
+          }
+        }
+      }
+    },
+    "/owner/tags/{id}/transfer": {
+      "post": {
+        "summary": "Apply owned tag action: transfer",
+        "operationId": "post_owner_tags_id_transfer",
+        "tags": [
+          "owner"
+        ],
+        "security": [
+          {
+            "ownerCookie": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Action succeeded; see docs/API.md for exact projection"
+          },
+          "default": {
+            "description": "Safe application error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "Origin",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Must exactly equal configured APP_ORIGIN"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {},
+                "required": []
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "scannerCookie": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "scanner_session"
+      },
+      "ownerCookie": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "owner_session"
+      }
+    },
+    "schemas": {
+      "Reason": {
+        "type": "string",
+        "enum": [
+          "blocked_access",
+          "lights_on",
+          "window_open",
+          "visible_damage",
+          "urgent_concern"
+        ]
+      },
+      "Error": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "error": {
+            "type": "string"
+          },
+          "requestId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "error",
+          "requestId"
+        ]
+      }
+    }
+  }
+}

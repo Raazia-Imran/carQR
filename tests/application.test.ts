@@ -138,6 +138,7 @@ test("T01/T02/T09: public DTO is allowlisted; GET never enqueues a send; unavail
   assert.deepEqual(Object.keys(dto).sort(), [
     "available",
     "descriptor",
+    "locale",
     "reasons",
   ]);
   assert.equal(
@@ -693,4 +694,192 @@ test("T35: 100 concurrent incident submissions are retained without duplicate lo
       ? "PostgreSQL"
       : "PGlite (serialized connections)",
   );
+});
+
+test("transfer preserves the original vehicle descriptor in the old owner history", async () => {
+  const { ownerDashboard } = await import("../packages/server/incidents");
+  const f = await fixture(),
+    i = await incident(f),
+    next = await user(),
+    v = await createVehicle(next, "Private new description", "Blue");
+  const transfer = await changeTag(f.owner, f.tag.id, "transfer");
+  await claimTag(next, transfer.token!, transfer.claimSecret!, v.id);
+  const history = await ownerDashboard(f.owner),
+    record = history.incidents.find((x) => x.id === i.id);
+  assert.equal(record!.make, "Silver Test vehicle");
+  assert.ok(
+    !JSON.stringify(history.incidents).includes("Private new description"),
+  );
+});
+
+test("a provider receipt arriving before send returns cannot be overwritten", async () => {
+  await isolateQueue();
+  const f = await fixture(),
+    i = await incident(f);
+  const p: Provider = {
+    async send(input) {
+      await transaction((db) =>
+        receipt(db, "early_" + input.id, "READ", input.id),
+      );
+      return { state: "ACCEPTED", providerId: "early_" + input.id };
+    },
+  };
+  await tick(p);
+  assert.equal(
+    (await one(
+      "SELECT state FROM delivery WHERE incident_id=$1 AND stage='primary'",
+      [i.id],
+    ))!.state,
+    "READ",
+  );
+});
+
+test("an acknowledgement during a provider request preserves the response and suppresses later stages", async () => {
+  await isolateQueue();
+  const f = await fixture(),
+    i = await incident(f);
+  let calls = 0;
+  const p: Provider = {
+    async send(input) {
+      calls++;
+      await ownerAction(f.owner, i.id, "coming");
+      return { state: "ACCEPTED", providerId: "race_" + input.id };
+    },
+  };
+  await tick(p);
+  await rows("UPDATE delivery SET available_at=now() WHERE incident_id=$1", [
+    i.id,
+  ]);
+  await tick(p);
+  assert.equal(calls, 1);
+  assert.equal((await publicIncident(i.id, i.scanner)).state, "ACKNOWLEDGED");
+});
+
+function liveFixture() {
+  const names = [
+    "PROVIDER_MODE",
+    "META_GRAPH_VERSION",
+    "META_PHONE_NUMBER_ID",
+    "META_ACCESS_TOKEN",
+    "META_VERIFY_TOKEN",
+    "META_TEMPLATE_NAME",
+    "SMS_GATEWAY_URL",
+    "SMS_API_KEY",
+    "TURNSTILE_SITE_KEY",
+    "TURNSTILE_SECRET_KEY",
+  ];
+  const previous = Object.fromEntries(names.map((n) => [n, process.env[n]]));
+  Object.assign(process.env, {
+    PROVIDER_MODE: "live",
+    META_GRAPH_VERSION: "v99.0",
+    META_PHONE_NUMBER_ID: "test-sender",
+    META_ACCESS_TOKEN: token(),
+    META_VERIFY_TOKEN: token(),
+    META_TEMPLATE_NAME: "test_alert",
+    SMS_GATEWAY_URL: "https://sms.example.invalid/send",
+    SMS_API_KEY: token(),
+    TURNSTILE_SITE_KEY: token(),
+    TURNSTILE_SECRET_KEY: token(),
+  });
+  return () => {
+    for (const n of names) {
+      if (previous[n] === undefined) delete process.env[n];
+      else process.env[n] = previous[n];
+    }
+  };
+}
+
+test("live adapters construct official-template and contracted-gateway requests with mock transport", async () => {
+  const { LiveProvider } = await import("../packages/server/providers");
+  const restore = liveFixture(),
+    original = globalThis.fetch,
+    calls: {
+      url: string;
+      body: Record<string, unknown>;
+      key: string | null;
+    }[] = [];
+  try {
+    globalThis.fetch = async (input, init) => {
+      calls.push({
+        url: String(input),
+        body: JSON.parse(String(init?.body)),
+        key: new Headers(init?.headers).get("Idempotency-Key"),
+      });
+      return Response.json(
+        calls.length === 1
+          ? { messages: [{ id: "meta_test" }] }
+          : { id: "sms_test" },
+      );
+    };
+    const p = new LiveProvider(),
+      input: SendInput = {
+        id: id(),
+        channel: "whatsapp",
+        destination: phone(),
+        reason: "lights_on",
+        reference: "test-ref",
+      };
+    assert.equal((await p.send(input)).state, "ACCEPTED");
+    await p.send({ ...input, channel: "sms" });
+    assert.ok(calls[0].url.startsWith("https://graph.facebook.com/"));
+    assert.equal(calls[0].body.messaging_product, "whatsapp");
+    assert.equal(calls[0].body.biz_opaque_callback_data, input.id);
+    assert.equal(calls[1].key, input.id);
+    assert.ok(String(calls[1].body.text).includes("Your lights are on"));
+    assert.ok(String(calls[1].body.text).includes("test-ref"));
+  } finally {
+    globalThis.fetch = original;
+    restore();
+  }
+});
+
+test("live adapter treats timeout, 5xx and malformed acceptance as uncertain", async () => {
+  const { LiveProvider } = await import("../packages/server/providers");
+  const restore = liveFixture(),
+    original = globalThis.fetch;
+  try {
+    const p = new LiveProvider(),
+      input: SendInput = {
+        id: id(),
+        channel: "sms",
+        destination: phone(),
+        reason: "window_open",
+        reference: "test-ref",
+      };
+    globalThis.fetch = async () => new Response("", { status: 503 });
+    assert.equal((await p.send(input)).state, "UNKNOWN");
+    globalThis.fetch = async () => {
+      throw new Error("timeout");
+    };
+    assert.equal((await p.send(input)).state, "UNKNOWN");
+    globalThis.fetch = async () => Response.json({ unexpected: true });
+    assert.equal((await p.send(input)).state, "UNKNOWN");
+    globalThis.fetch = async () => new Response("", { status: 400 });
+    assert.equal((await p.send(input)).state, "FAILED");
+  } finally {
+    globalThis.fetch = original;
+    restore();
+  }
+});
+
+test("live challenge verifies the hostname and fails closed on invalid or unavailable responses", async () => {
+  const { verifyChallenge } = await import("../packages/server/challenge");
+  const restore = liveFixture(),
+    original = globalThis.fetch;
+  try {
+    await reject(verifyChallenge(), "challenge_required");
+    globalThis.fetch = async () =>
+      Response.json({ success: true, hostname: "wrong.invalid" });
+    await reject(verifyChallenge(token()), "challenge_failed");
+    globalThis.fetch = async () =>
+      Response.json({ success: true, hostname: "localhost" });
+    await verifyChallenge(token());
+    globalThis.fetch = async () => {
+      throw new Error("offline");
+    };
+    await reject(verifyChallenge(token()), "challenge_unavailable");
+  } finally {
+    globalThis.fetch = original;
+    restore();
+  }
 });

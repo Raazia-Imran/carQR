@@ -1,41 +1,89 @@
-# QR CAR · Pakistan vehicle contact platform
+# QR CAR · private vehicle contact
 
-**Status: planning and pre-development. Research checked 15 October 2026.** No production application, customer traction or provider approval is claimed. “QR CAR” is a working name. An existing Pakistani competitor uses CarQR, so choose and clear a distinct commercial name before launch.
+**Working Phase A alpha. Live service launch is not approved.** The repository now includes an application, a durable worker, database migrations, tests and operating guides. The original product plan remains in [PRD.md](PRD.md) and [the planning handbook](QR_CAR_Master_Plan.md).
 
-A driver should be reachable about a blocked gate without publishing a personal phone number. A QR tag opens a mobile web page. The platform sends a private alert and tracks explicit acknowledgement. SMS provides a fallback when the owner lacks mobile data. Local masked voice follows after carrier approval.
+A passerby scans a sticker, chooses a fixed reason, and intentionally submits an alert. The owner responds through a private dashboard. Public pages never receive the owner's contact record. In configured live mode, WhatsApp is the primary channel and one consented SMS fallback becomes eligible after 90 seconds without acknowledgement.
 
-Download/read the [complete planning handbook](QR_CAR_Master_Plan.md) for a consolidated version, or use the modular files below. Track the eight workstreams in [GitHub Issues](https://github.com/Raazia-Imran/carQR/issues).
+## What works in this version
 
-## Start here
+- Responsive scanner, sign-in, owner, sticker, preferences, support/admin and site-summary surfaces.
+- OTP simulation locally; Supabase phone verification and TOTP adapters for live configuration.
+- Separate sealed activation secrets, atomic sticker claims, downloadable QR SVGs, pause, revoke and transfer.
+- Scanner-session-bound progress, idempotent incident creation, acknowledgement, resolution, cancellation and abuse reporting.
+- PostgreSQL outbox/queue, separate worker, SMS fallback, independently accepted backup invitations and expiry.
+- Encrypted contact storage, consent records, rate limits, a daily message-count cap, signed receipts, admin MFA and redacted audit logs.
+- Optional location, short-lived location retention, account export/deactivation, manual order requests, basic tenant isolation.
+- Install manifest and generic offline page. Private pages and API responses are never cached by the service worker.
 
-1. [Executive decision and corrections](docs/00-decision-brief.md)
-2. [Product requirements and complete role/screen inventory](PRD.md)
-3. [Competitors and research evidence](docs/01-market-and-competitors.md)
-4. [Architecture](ARCHITECTURE.md), [data model](docs/03-data-and-api.md) and [API contract](contracts/openapi.yaml)
-5. [Messaging, SMS and voice feasibility](docs/02-communications.md)
-6. [Privacy and security](docs/04-security-and-privacy.md)
-7. [Stickers, maps and operations](docs/05-operations.md)
-8. [Business model and economics](docs/06-business-and-economics.md)
-9. [Two-week, one-month and two-month roadmap](roadmap.md)
-10. [Execution board](TASKS.md), [detailed backlog](planning/backlog.csv), [coding kickoff](docs/07-coding-kickoff.md)
-11. [Tests and launch gates](docs/08-acceptance-and-launch.md)
-12. [Evidence register](docs/09-sources.md) and [provider questions](docs/10-provider-validation.md)
-13. [Pitch deck](pitch/QR_CAR_Pitch_Deck.pptx), [PDF](pitch/QR_CAR_Pitch_Deck.pdf), [presenter guide](pitch/PRESENTER_GUIDE.md)
+Simulation never sends real messages. Live providers, approved templates, the SMS route, real-device checks and pilot operations are still required. Masked calls are Phase B and are not implemented. See [release status and limitations](docs/IMPLEMENTATION.md).
 
-14. [Technical glossary](docs/11-glossary.md)
+## Run locally
 
-## Recommended commitment
+Install Node.js **24** and npm **11**. From a terminal:
 
-**Phase A:** scanner web flow, owner dashboard, official WhatsApp templates, acknowledgement, SMS escalation, minimal admin and support, secure sticker activation.
+```sh
+git clone --branch feat/phase-a-application https://github.com/Raazia-Imran/carQR.git
+cd carQR
+npm ci
+npm run local:setup
+npm run local:db
+```
 
-**Phase B:** approved local PSTN call bridge, verified scanner callback, call budgets and abuse controls. WhatsApp voice is a separate gated experiment, not the offline fallback.
+Keep the database terminal open. In another terminal:
 
-**Timeline assumptions:** two developers plus part-time product/QA, 20 focused hours each per week. Two weeks produces a demonstration, four weeks targets a controlled Phase A pilot, eight weeks targets a hardened pilot plus conditional Phase B. External approvals can move these dates. Solo part-time execution needs a smaller scope or more time.
+```sh
+npm run db:migrate
+npm run dev
+```
 
-## Working rules
+In a third terminal:
 
-Read [AGENTS.md](AGENTS.md) before implementation. Record new decisions in [memory.md](memory.md). Mark factual claims, hypotheses and estimates separately. Never commit phone numbers, tokens, participant identities or live claim secrets. No outbound customer/vendor messages have been sent by preparation of this repository.
+```sh
+npm run worker
+```
 
-## Local planning tools
+Open **http://localhost:3000**. Follow the complete [first-run walkthrough](docs/QUICKSTART.md) to create an owner, grant local staff access, generate a sticker, claim it and submit a test request.
 
-Run `python3 tools/economics.py` to reproduce illustrative unit economics. These inputs are assumptions, not vendor tariffs. The OpenAPI contract is a design starting point, not a running API. Backlog tasks remain TODO until implementation evidence exists.
+If embedded PostgreSQL is unavailable on your system, use Docker Desktop:
+
+```sh
+docker compose --env-file .env -f infra/compose.yml up -d
+```
+
+Use one database method, not both. Local setup generates random secrets and a database password; it never overwrites an existing `.env`. Keep `.env`, `.local/`, private print manifests and production data out of Git.
+
+## Checks
+
+```sh
+npm run typecheck
+npm test
+npm run build
+npm audit --omit=dev
+```
+
+`npm test` defaults to an isolated in-memory PGlite database. CI uses native PostgreSQL through `TEST_DATABASE_URL`; the tests **erase the schema of that dedicated test database**. Never point it at development or production data. [Verification evidence](docs/TESTING.md) distinguishes local tests, native CI, mock provider tests and checks that require real devices.
+
+## Project layout
+
+| Location | Purpose |
+|---|---|
+| `app/` | Next.js routes, responsive UI components and styles |
+| `packages/server/` | Auth, permissions, tags, incidents, queue, providers, webhooks and HTTP boundary |
+| `packages/shared/` | Validated inputs, fixed reasons and language labels |
+| `apps/worker/` | Separate durable dispatch and retention process |
+| `migrations/` | Versioned PostgreSQL migrations |
+| `scripts/` | Local configuration, database and role provisioning |
+| `tests/` | Database integration, privacy, concurrency and provider-failure checks |
+| `infra/`, `Dockerfile` | Database compose file and application container |
+
+## Documentation
+
+- [First run and demonstration](docs/QUICKSTART.md)
+- [Implemented scope, decisions and remaining work](docs/IMPLEMENTATION.md)
+- [API contract](contracts/openapi.yaml) and [API usage](docs/API.md)
+- [Live authentication and messaging integration](docs/PROVIDERS.md)
+- [Deployment, backups, reconciliation and incident response](docs/OPERATIONS.md)
+- [Tests and release evidence](docs/TESTING.md)
+- [Task board](TASKS.md), [original requirements](PRD.md), [architecture](ARCHITECTURE.md), [roadmap](roadmap.md), [decisions](memory.md)
+
+“QR CAR” is a working name. The original research identified a Pakistani competitor using CarQR; commercial name/domain clearance is still open. No license, supplier approval, customer traction, live delivery rate or zero-bug guarantee is claimed.

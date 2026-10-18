@@ -1,41 +1,36 @@
-# Task board
+# Task board · Phase A implementation
 
-Every implementation item is **TODO**. Research and planning preparation are complete; supplier validation and product development are not.
+Status updated 18–19 October 2026. The application exists on `feat/phase-a-application` in [PR #9](https://github.com/Raazia-Imran/carQR/pull/9). The original planning package remains the requirements baseline. No task is marked RELEASED.
 
-## Ready first
+## Implemented, awaiting review or remaining acceptance evidence
 
-- [ ] K01 Confirm team hours, budget and first site access
-- [ ] K02 Choose distinctive brand/domain after clearance
-- [ ] K03 Validate WhatsApp onboarding and template requirements
-- [ ] K04 Obtain transactional SMS route and quote
-- [ ] K05 Obtain voice-use/CLI feasibility in parallel
-- [ ] K06 Interview owners, guards and site buyers
-- [ ] K07 Set up app workspace, pinned dependencies and CI
-- [ ] K08 Implement auth/OTP/consent spike
+K07–K15: workspace, phone-auth integration, schema/migrations, secure claim/lifecycle, scanner, incident sessions/idempotency, outbox/worker and owner acknowledgement. Initial native PostgreSQL CI passed all 28 tests; regression additions are documented in TESTING.md.
 
-## Phase A construction
+K18–K23: escalation, owner dashboard, minimal admin, backup opt-in, rate/CAPTCHA/message caps, consent and retention. Live delivery, independently reviewed permissions, exact currency budgets and hosted-erasure operations are not complete.
 
-K09–K27 in planning/backlog.csv cover schema, secure tag claim, scanner, outbox, worker, providers, acknowledgement, escalation, owner/admin, localization and support. Follow dependencies rather than assigning all tasks simultaneously.
+K24–K27: localized scanner reasons/RTL, optional location, owner transfer/revocation and minimal tenant summaries. Full interface translation, fluent Urdu/real-device review, support recovery tooling and full site operations remain partial.
 
-## Pilot gate
+K30–K31: automated privacy/security tests and operating/restore/rollback guides are implemented. Independent security review, external monitoring configuration and a measured restore drill remain open. REVIEW does not mean all acceptance criteria have passed.
 
-K28–K34 cover print tests, provider device tests, security, operations, site rollout and evidence review. A completed demo does not satisfy this gate.
+## External integration blockers
 
-## Phase B and growth
+| Tasks | Dependency / next evidence |
+|---|---|
+| K03, K16 | Business sender, selected Graph version, approved two-variable WhatsApp template, consenting live test |
+| K04, K17, K29 | Contracted SMS gateway, real signed receipts, target-network/data-off handset evidence |
+| K05, K35, K41 | Carrier use/CLI approval and Phase B implementation/testing |
+| K33 | All pilot gates, named support owner, privacy/terms, print/device acceptance and restore rehearsal |
 
-K35–K42 cover approved voice bridge, verified scanner, privacy/cost tests, conditional WhatsApp voice, site expansion and paid validation.
+## Open product and field work
 
-## Task status vocabulary
+K01 team/budget, K02 commercial name/domain, K06 discovery, K28 physical stickers, K32 actual support/order process, K34 pilot outcomes, and K36–K42 follow-on voice/site/paid validation remain uncompleted. No teammates or vendor actions are invented.
 
-TODO → IN_PROGRESS → REVIEW → VERIFIED → RELEASED. BLOCKED includes the exact external dependency and responsible role. CSV includes estimated developer-hours; external waiting time and product/QA time are separate. Re-estimate at kickoff and weekly.
+## Next implementation work after this alpha
 
-## GitHub execution issues
+1. Configure and validate live identity, MFA, CAPTCHA and messaging in isolated staging.
+2. Add reviewed recovery/replacement and full assisted-erasure tools; finish automated provider-specific reconciliation if supported.
+3. Review web flows on 360 px Android, desktop keyboard, iOS and Urdu/RTL; verify print through glass.
+4. Configure monitoring, managed backups and release rollback; record a real restore rehearsal.
+5. Complete the Phase A pilot gates before real customer use. Start Phase B only with approved carrier evidence.
 
-- [E01 · Provider feasibility and launch prerequisites](https://github.com/Raazia-Imran/carQR/issues/1)
-- [E02 · Identity, secure tags and ownership](https://github.com/Raazia-Imran/carQR/issues/2)
-- [E03 · Scanner and owner incident flow](https://github.com/Raazia-Imran/carQR/issues/3)
-- [E04 · WhatsApp, SMS and reliable escalation](https://github.com/Raazia-Imran/carQR/issues/4)
-- [E05 · Admin, privacy and operations](https://github.com/Raazia-Imran/carQR/issues/5)
-- [E06 · Phase A controlled pilot](https://github.com/Raazia-Imran/carQR/issues/6)
-- [E07 · Phase B approved local masked voice](https://github.com/Raazia-Imran/carQR/issues/7)
-- [E08 · Site reporting and paid validation](https://github.com/Raazia-Imran/carQR/issues/8)
+Detailed task IDs remain in [planning/backlog.csv](planning/backlog.csv). Status vocabulary: TODO → IN_PROGRESS → REVIEW → VERIFIED → RELEASED. BLOCKED names an external dependency. The existing [eight GitHub workstream issues](https://github.com/Raazia-Imran/carQR/issues) are not auto-closed by a code-only alpha.

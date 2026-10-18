@@ -2,7 +2,7 @@
 
 Scope: this repository and descendants. Read README.md, PRD.md, ARCHITECTURE.md, roadmap.md and memory.md before implementation.
 
-- This is currently a planning repository. Do not label mock behavior, contracts or presentation mockups as a running product.
+- This repository contains a Phase A alpha alongside the original plan. Do not label mock behavior, contracts or presentation mockups as a running product.
 - Phase A precedes Phase B. Provider feasibility starts early. Do not remove the SMS fallback or privacy controls to meet a date.
 - Never expose owner phone, email, address, claim secret or provider credentials in public DTOs, HTML, URLs, logs or fixtures.
 - No alert on GET/scan. Require intentional POST and abuse controls.

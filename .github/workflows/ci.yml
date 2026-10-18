@@ -11,7 +11,7 @@ jobs:
     timeout-minutes: 15
     services:
       postgres:
-        image: postgres:17.6
+        image: postgres:17
         env:
           POSTGRES_USER: qrcar
           POSTGRES_PASSWORD: ci-only-not-a-secret
@@ -32,6 +32,9 @@ jobs:
         env:
           TEST_DATABASE_URL: postgresql://qrcar:ci-only-not-a-secret@localhost:5432/qrcar_test
       - run: npm run local:setup
+      - run: npm run db:migrate
+        env:
+          DATABASE_URL: postgresql://qrcar:ci-only-not-a-secret@localhost:5432/qrcar_test
       - run: npm run build
         env:
           NEXT_TELEMETRY_DISABLED: '1'
