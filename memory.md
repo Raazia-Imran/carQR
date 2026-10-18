@@ -35,3 +35,7 @@ User authorized coding the project in this repository with proper documentation.
 ### Continued verification, 18–19 October 2026
 
 Published Phase A code in draft PR #9, branch `feat/phase-a-application`, initial remote commit `9238240ca6ffa80c0761bfe0dd12a3da7a2cfedd`. Native PostgreSQL GitHub Actions passed the 28-test initial suite, typecheck, production build and runtime dependency audit. Local native database startup was blocked by host permissions; local testing used PGlite instead. Browser QA and live provider verification were not performed. Further review fixed immutable incident descriptions after tag transfer, corrected CLI scripts, split UI components, and added provider/race/CAPTCHA regressions. See the current README, IMPLEMENTATION, QUICKSTART, PROVIDERS, API, OPERATIONS and TESTING guides. Commercial/field work and Phase B are still open; no forced completion percentages.
+
+### 2026-10-19 complete local guide
+
+Added the verified 22-page Word guide to docs and linked it from README. It documents clone-to-demo Windows setup, code locations, owner/admin portals, implemented security, and explicit absence of OAuth login and email verification. Application code remains the tested 0f50794 implementation; this addition changes documentation only.

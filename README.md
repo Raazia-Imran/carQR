@@ -78,6 +78,8 @@ npm audit --omit=dev
 
 ## Documentation
 
+- [Complete local setup and feature guide in Word](docs/QR_CAR_Complete_Local_Setup_and_Feature_Guide.docx)
+
 - [First run and demonstration](docs/QUICKSTART.md)
 - [Implemented scope, decisions and remaining work](docs/IMPLEMENTATION.md)
 - [API contract](contracts/openapi.yaml) and [API usage](docs/API.md)
