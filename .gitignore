@@ -8,3 +8,14 @@ coverage/
 private/
 *.log
 .DS_Store
+
+node_modules/
+.next/
+.env
+.env.*
+!.env.example
+.local/
+*.tsbuildinfo
+coverage/
+test-results/
+playwright-report/

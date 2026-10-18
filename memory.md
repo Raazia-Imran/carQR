@@ -27,3 +27,7 @@ Read TASKS.md, select K01–K05, confirm available hours and begin provider/auth
 ## Change log
 
 2026-10-15: initial researched planning package and pre-development pitch. Corrected unsupported adoption/open-rate/pricing claims and delivery-versus-acknowledgement logic. Preserved A→B user intent with honest external gates.
+
+## 2026-10-18 implementation decisions
+
+User authorized coding the project in this repository with proper documentation. Development is on `feat/phase-a-application`, preserving the planning baseline. Phase A is the implementation target; no carrier approvals or production readiness are implied. See docs/IMPLEMENTATION.md for SQL/outbox/auth decisions and verification evidence. Exact dependencies and operations files are tracked with the code. External sender, route, identity configuration, name clearance and pilot gates remain real dependencies.
