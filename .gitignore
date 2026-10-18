@@ -8,3 +8,6 @@ coverage/
 private/
 *.log
 .DS_Store
+.local/
+*.tsbuildinfo
+out/

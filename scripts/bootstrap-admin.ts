@@ -1,0 +1,27 @@
+import { createInterface } from 'node:readline/promises';
+import { stdin,stdout } from 'node:process';
+import { Secret,TOTP } from 'otpauth';
+import { randomUUID } from 'node:crypto';
+import { mkdir,writeFile } from 'node:fs/promises';
+import { phoneSchema } from '../src/lib/auth';
+import { hash,encrypt } from '../src/lib/crypto';
+import { one,tx,pool } from '../src/lib/db';
+import { audit } from '../src/lib/security';
+const rl=createInterface({input:stdin,output:stdout});
+const phone=phoneSchema.parse(await rl.question('Verified staff phone (international format): '));
+const role=(await rl.question('Role ADMIN or OPERATOR: ')).trim();
+if(!['ADMIN','OPERATOR'].includes(role)) throw new Error('Invalid role');
+const tenant=role==='OPERATOR'?(await rl.question('Site UUID: ')).trim():null;
+if(tenant&&!/^[a-f\d-]{36}$/i.test(tenant)) throw new Error('Invalid site UUID');
+const secret=new Secret({size:20});
+const uri=new TOTP({issuer:'QR CAR',label:'Staff',secret}).toString();
+await tx(async db=>{
+ const existing=await one('SELECT id FROM users WHERE phone_hash=$1',[hash(phone)],db);
+ if(existing) throw new Error('Account already exists. Use documented staff recovery; bootstrap never replaces credentials.');
+ const id=randomUUID();
+ await db.query('INSERT INTO users(id,phone_hash,phone_cipher,name,role,tenant_id,totp_cipher) VALUES($1,$2,$3,$4,$5,$6,$7)',[id,hash(phone),encrypt(phone),'Staff',role,tenant,encrypt(secret.base32)]);
+ await audit(id,'STAFF_BOOTSTRAPPED',id,db);
+});
+await mkdir('.local',{recursive:true,mode:0o700});await writeFile('.local/staff-authenticator.txt',uri,{mode:0o600,flag:'wx'});
+console.log('Staff account created. Import the private URI in .local/staff-authenticator.txt into an authenticator; then securely remove the file.');
+rl.close();await pool.end();
