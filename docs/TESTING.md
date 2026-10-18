@@ -10,6 +10,10 @@ The automated suite is `tests/application.test.ts`. It drives domain functions a
 - Final local suite: all 34 tests passed after adding six regression/transport tests. Final typecheck and production build passed. The final native CI result is tracked on PR #9.
 - `npm audit --omit=dev` reported zero known runtime dependency vulnerabilities at the tested checkpoint. This is a registry advisory result, not a guarantee that the software contains no security flaws.
 
+## Landing page change, 19 October 2026
+
+After integrating the Three.js landing story, TypeScript checking, all 34 local PGlite tests and the production build passed. The runtime dependency audit reported zero known vulnerabilities. No live provider transport was used. The added scene and responsive styles have not had browser, WebGL-device, screenshot, keyboard or contrast verification in this environment. The required browser control capability was unavailable. See [LANDING.md](LANDING.md) for the manual review checklist. These checks do not establish glitch-free visual behavior.
+
 ## Risk coverage
 
 | Original scenario | Automated evidence | Remaining check |

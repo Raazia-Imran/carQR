@@ -1,8 +1,9 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 export const metadata: Metadata = {
-  title: "QR CAR · A little care goes a long way",
-  description: "A private way to reach the person behind the wheel.",
+  title: "QR CAR · A little less parking drama",
+  description:
+    "A small QR sticker connects a considerate passerby with your private owner area. Keep your phone number off the windshield.",
   robots: { index: false, follow: false },
   manifest: "/manifest.webmanifest",
 };

@@ -6,6 +6,7 @@ A passerby scans a sticker, chooses a fixed reason, and intentionally submits an
 
 ## What works in this version
 
+- Scroll-driven 3D landing story with an original cartoon car, interactive examples, privacy/features, pilot audiences and FAQs.
 - Responsive scanner, sign-in, owner, sticker, preferences, support/admin and site-summary surfaces.
 - OTP simulation locally; Supabase phone verification and TOTP adapters for live configuration.
 - Separate sealed activation secrets, atomic sticker claims, downloadable QR SVGs, pause, revoke and transfer.
@@ -68,6 +69,7 @@ npm audit --omit=dev
 | Location | Purpose |
 |---|---|
 | `app/` | Next.js routes, responsive UI components and styles |
+| `app/components/landing/` | Landing page, procedural Three.js scene, SVG fallback and scoped styles |
 | `packages/server/` | Auth, permissions, tags, incidents, queue, providers, webhooks and HTTP boundary |
 | `packages/shared/` | Validated inputs, fixed reasons and language labels |
 | `apps/worker/` | Separate durable dispatch and retention process |
@@ -81,6 +83,7 @@ npm audit --omit=dev
 - [Complete local setup and feature guide in Word](docs/QR_CAR_Complete_Local_Setup_and_Feature_Guide.docx)
 
 - [First run and demonstration](docs/QUICKSTART.md)
+- [3D landing page: structure, controls and review guide](docs/LANDING.md)
 - [Implemented scope, decisions and remaining work](docs/IMPLEMENTATION.md)
 - [API contract](contracts/openapi.yaml) and [API usage](docs/API.md)
 - [Live authentication and messaging integration](docs/PROVIDERS.md)

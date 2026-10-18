@@ -19,7 +19,7 @@ A Pakistan-focused scanner web app and owner portal. A passerby intentionally su
 | Operations | Minimal admin/fulfilment/support separation, MFA gate, audit, manual order states | Named operator, fulfilment/settlement process and independently reviewed access policy |
 | Sites | Site records, membership assignment, unclaimed-tag allocation, tenant-scoped read-only summaries | Full site staff incident creation/resolution, tenant budgets and reporting |
 | Privacy | Encrypted contact field, HMAC lookup, minimal public projection, old-owner history snapshot, consent records, location/incident/audit retention | Legal/entity review, managed key lifecycle, hosted-account erasure and backup policy |
-| UI | Responsive components, touch-size controls, English/Roman Urdu/Urdu reason labels and RTL selection, install manifest/offline page | Fluent Urdu review; full interface translation; real-device visual QA |
+| UI | Scroll-driven Three.js landing story, SVG fallback, reduced-motion support, responsive components, touch-size controls, English/Roman Urdu/Urdu reason labels and RTL selection, install manifest/offline page | Fluent Urdu review; full interface translation; real-device visual QA |
 | Voice | No public calling endpoints or arbitrary dial destinations | Phase B carrier route/CLI approval and separate implementation |
 
 ## Decisions from the proposed architecture

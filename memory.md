@@ -39,3 +39,7 @@ Published Phase A code in draft PR #9, branch `feat/phase-a-application`, initia
 ### 2026-10-19 complete local guide
 
 Added the verified 22-page Word guide to docs and linked it from README. It documents clone-to-demo Windows setup, code locations, owner/admin portals, implemented security, and explicit absence of OAuth login and email verification. Application code remains the tested 0f50794 implementation; this addition changes documentation only.
+
+### 2026-10-19 3D landing story
+
+Replaced the simple homepage with an original procedural Three.js car/streetscape and five scroll chapters: park, scan/confirm, private alert, acknowledgement and departure. Added illustrative reason selection and acknowledgement (no API sends), owner-control/privacy features, driver/campus/workplace audiences, honest pilot ordering and FAQs. Retained owner/scanner/admin flows. The scene loads separately, limits pixel density, stops offscreen/in background, disposes GPU resources, respects reduced motion and has an SVG fallback. No external models, tracking or fabricated customer evidence. WhatsApp remains implemented but live approval/configuration is unverified; calls remain Phase B. Typecheck, 34 local SQL tests, production build and runtime audit passed. Browser capability was unavailable, so visual/device QA remains outstanding; see docs/LANDING.md.

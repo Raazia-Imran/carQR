@@ -1,7 +1,8 @@
 "use client";
 import { useEffect } from "react";
 import { useResource, Header, Footer, type Mode } from "./components/common";
-import { Home, SignIn, Scanner, Progress, Policy } from "./components/public";
+import Landing from "./components/landing/Landing";
+import { SignIn, Scanner, Progress, Policy } from "./components/public";
 import { Workspace } from "./components/owner";
 export default function Application({ path }: { path: string[] }) {
   useEffect(() => {
@@ -18,9 +19,9 @@ export default function Application({ path }: { path: string[] }) {
           local demonstration.
         </div>
       )}
-      <Header />
+      {page !== "home" && <Header />}
       {page === "home" ? (
-        <Home />
+        <Landing />
       ) : page === "signin" ? (
         <SignIn mode={mode} />
       ) : page === "q" ? (
@@ -46,7 +47,7 @@ export default function Application({ path }: { path: string[] }) {
           </a>
         </main>
       )}
-      <Footer />
+      {page !== "home" && <Footer />}
     </>
   );
 }
