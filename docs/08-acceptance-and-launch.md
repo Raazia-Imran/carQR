@@ -1,5 +1,7 @@
 # Acceptance tests and release gates
 
+> Implementation update, 18–19 October 2026: application code now exists. This document preserves the planning baseline; see [IMPLEMENTATION.md](IMPLEMENTATION.md) and [TESTING.md](TESTING.md).
+
 Tests below are planned, not executed application tests. The application does not yet exist. Each release record should attach environment, version, device, carrier and evidence.
 
 | ID | Scenario | Required result |

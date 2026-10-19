@@ -1,5 +1,7 @@
 # Coding kickoff and repository workflow
 
+> Implementation update, 18–19 October 2026: application code now exists. This document preserves the planning baseline; see [IMPLEMENTATION.md](IMPLEMENTATION.md) and [TESTING.md](TESTING.md).
+
 This repository currently contains planning, contracts and presentation assets. The product application has not been built. Start implementation with a single vertical slice rather than building every dashboard first.
 
 ## Proposed implementation layout

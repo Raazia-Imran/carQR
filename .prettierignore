@@ -1,0 +1,7 @@
+node_modules
+.next
+.local
+package-lock.json
+QR_CAR_Master_Plan.md
+pitch
+deliverables
