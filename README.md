@@ -80,7 +80,8 @@ npm audit --omit=dev
 
 ## Documentation
 
-- [Complete local setup and feature guide in Word](docs/QR_CAR_Complete_Local_Setup_and_Feature_Guide.docx)
+- [Complete setup and technology guide online](docs/COMPLETE_SETUP_GUIDE.md)
+- [Updated 31 page setup and technology guide in Word](docs/QR_CAR_Complete_Local_Setup_and_Feature_Guide.docx)
 
 - [First run and demonstration](docs/QUICKSTART.md)
 - [3D landing page: structure, controls and review guide](docs/LANDING.md)
