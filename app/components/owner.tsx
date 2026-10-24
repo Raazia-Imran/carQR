@@ -303,8 +303,15 @@ function Vehicles({
             </label>
             <p className="small">
               These two details appear on your public sticker page. Do not enter
-              a name, number, or address.
+              a name, number, or address. Put the vehicle model in the first
+              field and its color in the second.
             </p>
+            {(make.trim() || color.trim()) && (
+              <p className="small" aria-live="polite">
+                Public display:{" "}
+                {[color.trim(), make.trim()].filter(Boolean).join(" ")}
+              </p>
+            )}
             <button disabled={task.busy}>Add car</button>
           </form>
         </section>
