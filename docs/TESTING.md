@@ -16,6 +16,14 @@ After integrating the Three.js landing story, TypeScript checking, all 34 local 
 
 ## Risk coverage
 
+### Local maintenance verification on 24 October 2026
+
+Against application baseline `a7956fa5e475f6dbdf3751b0bb5ec951ca841013`, all 34 existing tests, typecheck, production build and formatting passed before edits. After the narrow maintenance changes, all **45 tests**, typecheck, production build, formatting and runtime dependency audit passed locally. The audit reported zero known runtime advisories at this checkpoint.
+
+Added checks cover the actual migration CLI against an isolated persistent PGlite database (initial application, harmless rerun, retained sentinel record, nonzero redacted failure), claim URL normalization and generic invalid-pair rejection, distinct simulated/live delivery evidence, heartbeat behavior after failed dispatch, safe throttled diagnostics, development-only eval, and repeated owner responses racing resolution. The expanded HTTP journey exercises simulated OTP, staff role plus simulated MFA, private batch creation, claim, QR SVG, consent, scanner submission, simulated acceptance, owner acknowledgement, scanner resolution, audit records and staff concern review. No live messages are sent.
+
+A local production and development HTTP check returned 200, one main heading and the SVG landing fallback in both modes; production omitted `unsafe-eval` and development included it. This is server-render/header evidence, not browser visual evidence. Local native PostgreSQL startup was blocked by the execution host's inability to create its required operating-system user. Browser installation returned truncated archives; browser/WebGL, mobile, keyboard, zoom and device checks were not performed. Native PostgreSQL and Windows PGlite/CLI jobs are defined in CI; consult the maintenance PR's actual check results before treating them as passed. See [the maintenance record](MAINTENANCE_2026-10-24.md).
+
 | Original scenario | Automated evidence | Remaining check |
 |---|---|---|
 | T01–T02, T09 | Public DTO allowlist, uniform unavailable view, GET has no alert side effect | Browser HTML/network inspection with real devices |
