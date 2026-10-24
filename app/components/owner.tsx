@@ -27,6 +27,7 @@ import {
   type PublicState,
 } from "./common";
 import { Admin, Site } from "./admin";
+import { normalizeTagInput } from "@/packages/shared/tag-input";
 export function Workspace({
   page,
   path,
@@ -314,12 +315,13 @@ function Vehicles({
             onSubmit={submit(
               () =>
                 void task.run(async () => {
-                  const tokenValue = raw.includes("/q/")
-                    ? raw.split("/q/")[1]
-                    : raw;
+                  const tokenValue = normalizeTagInput(
+                    raw,
+                    window.location.origin,
+                  );
                   await api("owner/tags/claim", {
                     token: tokenValue,
-                    claimSecret: secret,
+                    claimSecret: secret.trim(),
                     vehicleId,
                   });
                   setRaw("");
@@ -362,6 +364,11 @@ function Vehicles({
                 autoComplete="off"
               />
             </label>
+            <p className="small">
+              Use the URL or code and sealed secret from the same sticker. A
+              full URL must belong to this website. The public QR alone cannot
+              activate a sticker.
+            </p>
             <button disabled={task.busy || !d.vehicles.length}>
               Activate sticker
             </button>

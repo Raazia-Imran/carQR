@@ -49,6 +49,7 @@ import {
   siteIncidents,
 } from "../packages/server/admin";
 import { handle } from "../packages/server/http";
+import { normalizeTagInput } from "../packages/shared/tag-input";
 before(setup);
 after(async () => {
   await pool().end();
@@ -174,6 +175,20 @@ test("T04/T05: public token cannot activate a tag; vehicle ownership is enforced
     "vehicle_not_found",
   );
   await reject(ownTag(other, f.tag.id), "tag_not_found");
+});
+test("F03: normalized URL claims once and invalid pairs retain the generic failure", async () => {
+  const f = await fixture(false);
+  const parsed = normalizeTagInput(
+    ` http://localhost:3000/q/${f.tag.token}?print=1#qr `,
+    "http://localhost:3000",
+  );
+  await reject(claimTag(f.owner, parsed, token(), f.v.id), "claim_unavailable");
+  await claimTag(f.owner, parsed, f.tag.claimSecret, f.v.id);
+  await reject(
+    claimTag(f.owner, parsed, f.tag.claimSecret, f.v.id),
+    "claim_unavailable",
+  );
+  assert.equal((await ownTag(f.owner, f.tag.id)).state, "active");
 });
 test("T07/T08: concurrent idempotent retries create one incident and one dispatch per stage", async () => {
   const f = await fixture(),
