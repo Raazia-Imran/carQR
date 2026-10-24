@@ -1,5 +1,5 @@
 import { readdir, readFile } from "node:fs/promises";
-import { pool, transaction } from "../packages/server/db";
+import { transaction } from "../packages/server/db";
 export async function migrate() {
   await transaction(async (db) => {
     await db.query("SELECT pg_advisory_xact_lock(748291)");
@@ -21,9 +21,4 @@ export async function migrate() {
       await db.query("INSERT INTO schema_migration(name) VALUES($1)", [name]);
     }
   });
-}
-if (process.argv[1]?.endsWith("/migrate.ts")) {
-  await migrate();
-  await pool().end();
-  console.log("Migrations applied.");
 }

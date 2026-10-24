@@ -126,11 +126,19 @@ export async function publicIncident(incidentId: string, scanner: string) {
     (x) => !x.simulated && ["DELIVERED", "READ"].includes(x.state),
   )
     ? "CONFIRMED"
-    : attempts.some((x) =>
-          ["QUEUED", "SUBMITTING", "ACCEPTED"].includes(x.state),
-        )
-      ? "PENDING"
-      : "UNCONFIRMED";
+    : attempts.some((x) => !x.simulated && x.state === "ACCEPTED")
+      ? "ACCEPTED"
+      : attempts.some(
+            (x) =>
+              x.simulated &&
+              ["ACCEPTED", "DELIVERED", "READ"].includes(x.state),
+          )
+        ? "SIMULATED"
+        : attempts.some((x) =>
+              ["QUEUED", "SUBMITTING", "ACCEPTED"].includes(x.state),
+            )
+          ? "PENDING"
+          : "UNCONFIRMED";
   return {
     id: i.id,
     state,

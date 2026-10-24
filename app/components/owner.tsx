@@ -27,6 +27,7 @@ import {
   type PublicState,
 } from "./common";
 import { Admin, Site } from "./admin";
+import { normalizeTagInput } from "@/packages/shared/tag-input";
 export function Workspace({
   page,
   path,
@@ -302,8 +303,15 @@ function Vehicles({
             </label>
             <p className="small">
               These two details appear on your public sticker page. Do not enter
-              a name, number, or address.
+              a name, number, or address. Put the vehicle model in the first
+              field and its color in the second.
             </p>
+            {(make.trim() || color.trim()) && (
+              <p className="small" aria-live="polite">
+                Public display:{" "}
+                {[color.trim(), make.trim()].filter(Boolean).join(" ")}
+              </p>
+            )}
             <button disabled={task.busy}>Add car</button>
           </form>
         </section>
@@ -314,12 +322,13 @@ function Vehicles({
             onSubmit={submit(
               () =>
                 void task.run(async () => {
-                  const tokenValue = raw.includes("/q/")
-                    ? raw.split("/q/")[1]
-                    : raw;
+                  const tokenValue = normalizeTagInput(
+                    raw,
+                    window.location.origin,
+                  );
                   await api("owner/tags/claim", {
                     token: tokenValue,
-                    claimSecret: secret,
+                    claimSecret: secret.trim(),
                     vehicleId,
                   });
                   setRaw("");
@@ -362,6 +371,11 @@ function Vehicles({
                 autoComplete="off"
               />
             </label>
+            <p className="small">
+              Use the URL or code and sealed secret from the same sticker. A
+              full URL must belong to this website. The public QR alone cannot
+              activate a sticker.
+            </p>
             <button disabled={task.busy || !d.vehicles.length}>
               Activate sticker
             </button>

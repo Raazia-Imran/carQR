@@ -49,6 +49,7 @@ import {
   siteIncidents,
 } from "../packages/server/admin";
 import { handle } from "../packages/server/http";
+import { normalizeTagInput } from "../packages/shared/tag-input";
 before(setup);
 after(async () => {
   await pool().end();
@@ -175,6 +176,20 @@ test("T04/T05: public token cannot activate a tag; vehicle ownership is enforced
   );
   await reject(ownTag(other, f.tag.id), "tag_not_found");
 });
+test("F03: normalized URL claims once and invalid pairs retain the generic failure", async () => {
+  const f = await fixture(false);
+  const parsed = normalizeTagInput(
+    ` http://localhost:3000/q/${f.tag.token}?print=1#qr `,
+    "http://localhost:3000",
+  );
+  await reject(claimTag(f.owner, parsed, token(), f.v.id), "claim_unavailable");
+  await claimTag(f.owner, parsed, f.tag.claimSecret, f.v.id);
+  await reject(
+    claimTag(f.owner, parsed, f.tag.claimSecret, f.v.id),
+    "claim_unavailable",
+  );
+  assert.equal((await ownTag(f.owner, f.tag.id)).state, "active");
+});
 test("T07/T08: concurrent idempotent retries create one incident and one dispatch per stage", async () => {
   const f = await fixture(),
     scanner = token(),
@@ -229,6 +244,44 @@ test("T14/T15: SMS is scheduled 90 seconds after creation; delivery does not ack
   assert.equal(p.calls.length, 2);
   assert.equal(p.calls[1].channel, "sms");
 });
+test("F02: scanner separates simulated acceptance, live acceptance, delivery and owner response", async () => {
+  await isolateQueue();
+  const f = await fixture(),
+    i = await incident(f);
+  assert.equal((await publicIncident(i.id, i.scanner)).delivery, "PENDING");
+  await tick(new SimulationProvider());
+  let status = await publicIncident(i.id, i.scanner);
+  assert.equal(status.delivery, "SIMULATED");
+  assert.equal(status.state, "OPEN");
+  await rows(
+    "UPDATE delivery SET state='DELIVERED' WHERE incident_id=$1 AND stage='primary'",
+    [i.id],
+  );
+  assert.equal((await publicIncident(i.id, i.scanner)).delivery, "SIMULATED");
+  await rows(
+    "UPDATE delivery SET state='ACCEPTED',simulated=false WHERE incident_id=$1 AND stage='primary'",
+    [i.id],
+  );
+  assert.equal((await publicIncident(i.id, i.scanner)).delivery, "ACCEPTED");
+  await rows(
+    "UPDATE delivery SET state='DELIVERED' WHERE incident_id=$1 AND stage='primary'",
+    [i.id],
+  );
+  status = await publicIncident(i.id, i.scanner);
+  assert.equal(status.delivery, "CONFIRMED");
+  assert.equal(status.state, "OPEN");
+  await ownerAction(f.owner, i.id, "coming");
+  status = await publicIncident(i.id, i.scanner);
+  assert.equal(status.state, "ACKNOWLEDGED");
+  assert.equal(status.delivery, "CONFIRMED");
+  assert.deepEqual(Object.keys(status).sort(), [
+    "delivery",
+    "expiresAt",
+    "id",
+    "response",
+    "state",
+  ]);
+});
 test("T16: acknowledgement suppresses queued fallback", async () => {
   await isolateQueue();
   const f = await fixture(),
@@ -242,6 +295,58 @@ test("T16: acknowledgement suppresses queued fallback", async () => {
   await tick(p);
   assert.equal(p.calls.length, 1);
   assert.equal((await publicIncident(i.id, i.scanner)).state, "ACKNOWLEDGED");
+});
+test("F04: failed dispatch does not refresh the successful worker heartbeat", async () => {
+  await isolateQueue();
+  const f = await fixture();
+  await incident(f);
+  await rows(
+    "INSERT INTO worker_health(name,heartbeat_at) VALUES('dispatcher','2000-01-01T00:00:00Z') ON CONFLICT(name) DO UPDATE SET heartbeat_at='2000-01-01T00:00:00Z'",
+  );
+  await assert.rejects(
+    tick({
+      send: async () => {
+        throw new Error("test transport failed");
+      },
+    }),
+  );
+  assert.equal(
+    new Date(
+      (await one(
+        "SELECT heartbeat_at FROM worker_health WHERE name='dispatcher'",
+      ))!.heartbeat_at,
+    ).getUTCFullYear(),
+    2000,
+  );
+  await tick(new SimulationProvider());
+  assert.ok(
+    new Date(
+      (await one(
+        "SELECT heartbeat_at FROM worker_health WHERE name='dispatcher'",
+      ))!.heartbeat_at,
+    ).getTime() >
+      Date.now() - 10000,
+  );
+});
+test("F07: repeated owner responses and concurrent resolution cannot reopen or duplicate dispatch", async () => {
+  await isolateQueue();
+  const f = await fixture(),
+    i = await incident(f),
+    p = new Spy();
+  await tick(p);
+  await Promise.all([
+    ownerAction(f.owner, i.id, "coming"),
+    ownerAction(f.owner, i.id, "coming"),
+  ]);
+  assert.equal((await publicIncident(i.id, i.scanner)).state, "ACKNOWLEDGED");
+  await Promise.allSettled([
+    ownerAction(f.owner, i.id, "unavailable"),
+    ownerAction(f.owner, i.id, "resolve"),
+  ]);
+  assert.equal((await publicIncident(i.id, i.scanner)).state, "RESOLVED");
+  await reject(ownerAction(f.owner, i.id, "coming"), "incident_closed");
+  await tick(p);
+  assert.equal(p.calls.length, 1);
 });
 test("T21: revoked consent suppresses dispatch", async () => {
   await isolateQueue();
@@ -553,6 +658,7 @@ test("HTTP boundary rejects CSRF, extra fields, unowned status, and anonymous ad
   assert.equal((await one("SELECT count(*) n FROM delivery"))!.n, before!.n);
 });
 test("HTTP complete local journey creates a real alert and authenticates the owner", async () => {
+  await isolateQueue();
   const p = phone();
   const start = await (
     await handle(request("auth/start", "POST", { phone: p }))
@@ -570,6 +676,19 @@ test("HTTP complete local journey creates a real alert and authenticates the own
   const dash = await (
     await handle(request("owner/dashboard", "GET", undefined, session))
   ).json();
+  assert.equal(
+    (
+      await handle(
+        request(
+          "owner/preferences",
+          "POST",
+          { whatsapp: true, sms: true, dnd: false, locale: "en" },
+          session,
+        ),
+      )
+    ).status,
+    200,
+  );
   const v = await (
     await handle(
       request(
@@ -580,9 +699,21 @@ test("HTTP complete local journey creates a real alert and authenticates the own
       ),
     )
   ).json();
-  const admin = await user(),
-    batch = await createBatch(admin, 1),
-    t = batch.tags[0];
+  // Provision only this disposable test account, then exercise the actual staff MFA gate.
+  await rows("UPDATE app_user SET role='admin' WHERE id=$1", [dash.user.id]);
+  assert.equal(
+    (await handle(request("admin/overview", "GET", undefined, session))).status,
+    403,
+  );
+  assert.equal(
+    (await handle(request("mfa/verify", "POST", {}, session))).status,
+    200,
+  );
+  const batchResponse = await handle(
+    request("admin/batches", "POST", { quantity: 1 }, session),
+  );
+  assert.equal(batchResponse.status, 201);
+  const t = (await batchResponse.json()).tags[0];
   assert.equal(
     (
       await handle(
@@ -609,6 +740,18 @@ test("HTTP complete local journey creates a real alert and authenticates the own
   );
   assert.equal(incidentResult.status, 201);
   const i = await incidentResult.json();
+  await tick(new SimulationProvider());
+  const simulated = await (
+    await handle(request("public/incidents/" + i.id, "GET", undefined, scanner))
+  ).json();
+  assert.equal(simulated.delivery, "SIMULATED");
+  const qr = await (
+    await handle(
+      request("owner/tags/" + t.id + "/sticker", "GET", undefined, session),
+    )
+  ).json();
+  assert.ok(qr.svg.includes("<svg"));
+  assert.ok(!qr.svg.includes(p));
   assert.equal(
     (
       await handle(
@@ -628,6 +771,52 @@ test("HTTP complete local journey creates a real alert and authenticates the own
   assert.equal(progress.state, "ACKNOWLEDGED");
   assert.ok(!JSON.stringify(progress).includes(p));
   assert.ok(!JSON.stringify(progress).includes(dash.user.id));
+  assert.equal(
+    (
+      await handle(
+        request("public/incidents/" + i.id + "/resolve", "POST", {}, scanner),
+      )
+    ).status,
+    200,
+  );
+  const resolved = await (
+    await handle(request("public/incidents/" + i.id, "GET", undefined, scanner))
+  ).json();
+  assert.equal(resolved.state, "RESOLVED");
+  const audit = await rows("SELECT action FROM audit_log WHERE target_id=$1", [
+    i.id,
+  ]);
+  for (const action of ["incident_created", "owner_coming", "scanner_resolve"])
+    assert.ok(audit.some((x) => x.action === action));
+  assert.equal(
+    (
+      await handle(
+        request("public/incidents/" + i.id + "/report", "POST", {}, scanner),
+      )
+    ).status,
+    200,
+  );
+  const report = await one(
+    "SELECT id,state FROM abuse_report WHERE incident_id=$1",
+    [i.id],
+  );
+  assert.equal(report!.state, "open");
+  assert.equal(
+    (await handle(request("admin/reports/" + report!.id, "POST", {}, session)))
+      .status,
+    200,
+  );
+  assert.equal(
+    (await one("SELECT state FROM abuse_report WHERE id=$1", [report!.id]))!
+      .state,
+    "reviewed",
+  );
+  assert.ok(
+    await one(
+      "SELECT 1 FROM audit_log WHERE target_id=$1 AND action='report_reviewed'",
+      [report!.id],
+    ),
+  );
 });
 test("T32: expiry suppresses sends and retention clears location and old incidents", async () => {
   await isolateQueue();

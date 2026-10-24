@@ -8,7 +8,11 @@ import {
   type ReactNode,
 } from "react";
 import { useRouter } from "next/navigation";
-import { labels, type Reason } from "@/packages/shared/contracts";
+import {
+  labels,
+  type Reason,
+  type deliveryLabels,
+} from "@/packages/shared/contracts";
 
 export type Mode = {
   simulation: boolean;
@@ -47,7 +51,7 @@ export type Dashboard = {
 export type PublicState = {
   id: string;
   state: string;
-  delivery: string;
+  delivery: keyof typeof deliveryLabels;
   response?: string;
   expiresAt: string;
 };

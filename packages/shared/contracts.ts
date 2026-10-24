@@ -1,4 +1,11 @@
 import { z } from "zod";
+export const deliveryLabels = {
+  PENDING: "Waiting for provider acceptance; delivery is not verified",
+  ACCEPTED: "Provider accepted the alert; delivery is not verified",
+  SIMULATED: "Simulated provider accepted the alert; no real message was sent",
+  CONFIRMED: "Provider confirmed delivery",
+  UNCONFIRMED: "Delivery is unconfirmed",
+} as const;
 export const reasons = [
   "blocked_access",
   "lights_on",

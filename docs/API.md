@@ -69,7 +69,7 @@ Reason values: `blocked_access`, `lights_on`, `window_open`, `visible_damage`, `
 
 Incident state: OPEN, ACKNOWLEDGED, RESOLVED, CANCELLED, EXPIRED. `unavailable` and `report_abuse` are explicit owner responses, not false resolutions. Both stop escalation. Acknowledgement does not prove the car moved. Resolution records whether owner or scanner reported it.
 
-Public delivery: PENDING (queued/submitting/accepted), CONFIRMED (a real delivered/read receipt), UNCONFIRMED (no confirmation evidence). Simulated acceptance or receipts cannot produce CONFIRMED. Provider delivery state is separate from incident outcome.
+Public delivery: PENDING (queued/submitting), ACCEPTED (a live provider accepted the alert without delivery evidence), SIMULATED (simulated acceptance or receipt; no real send), CONFIRMED (a real delivered/read receipt), UNCONFIRMED (no confirmation evidence). Simulated acceptance or receipts cannot produce CONFIRMED. Provider delivery state is separate from incident outcome; owner acknowledgement and resolution do not manufacture delivery evidence.
 
 ## Errors and limits
 

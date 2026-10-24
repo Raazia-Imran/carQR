@@ -2,7 +2,9 @@ import { setTimeout } from "node:timers/promises";
 import { tick } from "../../packages/server/worker";
 import { pool } from "../../packages/server/db";
 import { config } from "../../packages/server/config";
+import { createWorkerReporter } from "../../packages/server/diagnostics";
 config();
+const reporter = createWorkerReporter();
 let running = true;
 process.on("SIGTERM", () => {
   running = false;
@@ -15,11 +17,11 @@ console.log(
 );
 while (running) {
   try {
-    if (!(await tick())) await setTimeout(1000);
-  } catch {
-    console.error(
-      "Worker iteration failed; inspect database health and reconciliation queue.",
-    );
+    const worked = await tick();
+    reporter.recovered();
+    if (!worked) await setTimeout(1000);
+  } catch (error) {
+    reporter.failed(error);
     await setTimeout(2000);
   }
 }

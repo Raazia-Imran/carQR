@@ -7,7 +7,7 @@ One Next.js web process, one separate Node worker, and PostgreSQL. The same sour
 1. Complete the launch gates in docs/08-acceptance-and-launch.md and the current test matrix.
 2. Build the Docker image from the reviewed commit. Never pass runtime secrets as build arguments. `.dockerignore` excludes environment files and local data.
 3. Provision the database and runtime secrets from `.env.example` in your hosting secret manager. Set `APP_ENV=staging` initially and both live adapters. `APP_ORIGIN` must exactly match the HTTPS browser origin without a trailing slash.
-4. Run migrations once as a release job before starting the new web/worker versions. In a container with injected environment variables, run `node --import tsx scripts/migrate.ts` directly; the npm development shortcut expects a local `.env` file.
+4. Run migrations once as a release job before starting the new web/worker versions. In a container with injected environment variables, run `node --import tsx scripts/migrate-cli.ts` directly; the npm development shortcut expects a local `.env` file. `scripts/migrate.ts` exports the migration function for tests and other programmatic callers.
 5. Start web with `npm start`. Start worker with `node --import tsx apps/worker/main.ts` when environment variables are injected, or `npm run worker` for local development.
 6. Put the web process behind a trusted HTTPS ingress. Block direct internet access to its port. Overwrite, never append/trust client values for, `X-Real-IP`; then set `TRUST_PROXY=true`. When false, the conservative shared ingress bucket is used, so unrelated users share that bucket.
 7. Configure edge request/body limits, TLS/HSTS, route redaction and alerts. Do not log full `/q/:token` paths, cookies, auth bodies, provider payloads or private manifests. The application itself only logs request IDs on API failures.
@@ -20,6 +20,7 @@ The container retains development runtime tools because migrations and worker Ty
 - `/api/health`: database connectivity; returns no contact or queue details.
 - Admin overview: queued and uncertain counts, recent failures, reports, inventory, orders and worker heartbeat.
 - Alert if worker heartbeat exceeds 60 seconds, database connections fail, oldest queued due time grows, `UNKNOWN` attempts appear, or the daily reservation budget approaches exhaustion.
+- Heartbeat records a successful complete worker iteration, rather than maintenance alone. Worker failures emit a generated reference, an allowlisted error category and a fixed troubleshooting hint. Repeated identical failures are logged at most once per 30 seconds, with a suppressed count and a recovery event. Raw driver messages, SQL, payloads and destinations are omitted. `schema_missing` / `schema_outdated` require migrations; `database_unreachable` requires checking PostgreSQL availability. An old heartbeat can take up to the existing 60-second threshold to show as stale.
 - No external monitoring service is configured by this repository. Configure one and test its alert path. Availability and latency targets in PRD.md remain targets, not measured SLAs.
 
 ## Stop sends quickly
