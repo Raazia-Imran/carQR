@@ -296,6 +296,38 @@ test("T16: acknowledgement suppresses queued fallback", async () => {
   assert.equal(p.calls.length, 1);
   assert.equal((await publicIncident(i.id, i.scanner)).state, "ACKNOWLEDGED");
 });
+test("F04: failed dispatch does not refresh the successful worker heartbeat", async () => {
+  await isolateQueue();
+  const f = await fixture();
+  await incident(f);
+  await rows(
+    "INSERT INTO worker_health(name,heartbeat_at) VALUES('dispatcher','2000-01-01T00:00:00Z') ON CONFLICT(name) DO UPDATE SET heartbeat_at='2000-01-01T00:00:00Z'",
+  );
+  await assert.rejects(
+    tick({
+      send: async () => {
+        throw new Error("test transport failed");
+      },
+    }),
+  );
+  assert.equal(
+    new Date(
+      (await one(
+        "SELECT heartbeat_at FROM worker_health WHERE name='dispatcher'",
+      ))!.heartbeat_at,
+    ).getUTCFullYear(),
+    2000,
+  );
+  await tick(new SimulationProvider());
+  assert.ok(
+    new Date(
+      (await one(
+        "SELECT heartbeat_at FROM worker_health WHERE name='dispatcher'",
+      ))!.heartbeat_at,
+    ).getTime() >
+      Date.now() - 10000,
+  );
+});
 test("T21: revoked consent suppresses dispatch", async () => {
   await isolateQueue();
   const f = await fixture();

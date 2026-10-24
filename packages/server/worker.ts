@@ -52,14 +52,17 @@ export async function maintenance() {
     await rows("DELETE FROM auth_session WHERE expires_at<now()", [], db);
     await rows("DELETE FROM otp_challenge WHERE expires_at<now()", [], db);
     await rows("DELETE FROM rate_bucket WHERE expires_at<now()", [], db);
-    await rows(
-      "INSERT INTO worker_health(name,heartbeat_at) VALUES('dispatcher',now()) ON CONFLICT(name) DO UPDATE SET heartbeat_at=now()",
-      [],
-      db,
-    );
   });
 }
 export async function tick(p: Provider = provider()) {
+  const result = await processTick(p);
+  // A maintenance pass alone must not make a failing dispatcher look healthy.
+  await rows(
+    "INSERT INTO worker_health(name,heartbeat_at) VALUES('dispatcher',now()) ON CONFLICT(name) DO UPDATE SET heartbeat_at=now()",
+  );
+  return result;
+}
+async function processTick(p: Provider) {
   const c = config();
   await maintenance();
   if (c.MESSAGING_ENABLED !== "true") return false;
