@@ -9,7 +9,11 @@ import {
 } from "react";
 import { useRouter } from "next/navigation";
 import Challenge from "../challenge";
-import { labels, type Reason } from "@/packages/shared/contracts";
+import {
+  labels,
+  deliveryLabels,
+  type Reason,
+} from "@/packages/shared/contracts";
 import {
   api,
   useResource,
@@ -426,11 +430,7 @@ export function Progress({ incidentId }: { incidentId: string }) {
             <li className={d.delivery === "CONFIRMED" ? "done" : ""}>
               <span className="dot">2</span>
               <span>
-                {d.delivery === "CONFIRMED"
-                  ? "Provider confirmed delivery"
-                  : d.delivery === "UNCONFIRMED"
-                    ? "Delivery is unconfirmed"
-                    : "Waiting for delivery confirmation"}
+                {deliveryLabels[d.delivery] ?? deliveryLabels.UNCONFIRMED}
                 <br />
                 <small>A receipt does not mean the owner has responded.</small>
               </span>

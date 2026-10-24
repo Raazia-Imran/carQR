@@ -229,6 +229,44 @@ test("T14/T15: SMS is scheduled 90 seconds after creation; delivery does not ack
   assert.equal(p.calls.length, 2);
   assert.equal(p.calls[1].channel, "sms");
 });
+test("F02: scanner separates simulated acceptance, live acceptance, delivery and owner response", async () => {
+  await isolateQueue();
+  const f = await fixture(),
+    i = await incident(f);
+  assert.equal((await publicIncident(i.id, i.scanner)).delivery, "PENDING");
+  await tick(new SimulationProvider());
+  let status = await publicIncident(i.id, i.scanner);
+  assert.equal(status.delivery, "SIMULATED");
+  assert.equal(status.state, "OPEN");
+  await rows(
+    "UPDATE delivery SET state='DELIVERED' WHERE incident_id=$1 AND stage='primary'",
+    [i.id],
+  );
+  assert.equal((await publicIncident(i.id, i.scanner)).delivery, "SIMULATED");
+  await rows(
+    "UPDATE delivery SET state='ACCEPTED',simulated=false WHERE incident_id=$1 AND stage='primary'",
+    [i.id],
+  );
+  assert.equal((await publicIncident(i.id, i.scanner)).delivery, "ACCEPTED");
+  await rows(
+    "UPDATE delivery SET state='DELIVERED' WHERE incident_id=$1 AND stage='primary'",
+    [i.id],
+  );
+  status = await publicIncident(i.id, i.scanner);
+  assert.equal(status.delivery, "CONFIRMED");
+  assert.equal(status.state, "OPEN");
+  await ownerAction(f.owner, i.id, "coming");
+  status = await publicIncident(i.id, i.scanner);
+  assert.equal(status.state, "ACKNOWLEDGED");
+  assert.equal(status.delivery, "CONFIRMED");
+  assert.deepEqual(Object.keys(status).sort(), [
+    "delivery",
+    "expiresAt",
+    "id",
+    "response",
+    "state",
+  ]);
+});
 test("T16: acknowledgement suppresses queued fallback", async () => {
   await isolateQueue();
   const f = await fixture(),
